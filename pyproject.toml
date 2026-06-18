@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vhh-predict"
+version = "0.1.0"
+description = "HEFT closed-form predictions for W±HH and ZHH production"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.22",
+  "matplotlib>=3.5",
+  "pandas>=1.4",
+]
+
+[project.optional-dependencies]
+notebook = ["jupyter>=1.0", "ipykernel>=6.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vhh_predict*"]
+
+[tool.setuptools.package-data]
+vhh_predict = []
+
+# Ship bundled coefficients with the repo layout (data/ sibling to package)
+[tool.setuptools.data-files]
+"share/vhh-predict" = ["data/**/*"]
