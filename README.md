@@ -43,6 +43,7 @@ Package/
 │       ├── {Process}_{energy}_analysis_A.txt   # human-readable summary (reference)
 │       ├── pdf_alpha_s_covariance.json
 │       └── scale_coefficients.json
+│       └── Simulation/           # MadGraph .out central values (comparison)
 └── plots/                        # notebook output (gitignored *.png)
 ```
 
@@ -53,6 +54,7 @@ Package/
 | `{Process}_{energy}_analysis_A.txt` | Human-readable reference (methods, tables, covariances); not read at runtime |
 | `pdf_alpha_s_covariance.json` | Central \(A_i\), PDF/αₛ deltas, `C_pdf`, `C_alphaS`, `C_pdf_alphaS` |
 | `scale_coefficients.json` | 7-point refitted \(A_i\) at each \((\mu_R,\mu_F)\) |
+| `Simulation/*.out` | MadGraph central σ values for comparison with HEFT extrapolation |
 
 ### Uncertainties
 

@@ -69,6 +69,16 @@ def process_data_dir(process: str, energy_tev: float, root: Optional[Path] = Non
     return root / process / tag
 
 
+def process_simulation_dir(
+    process: str,
+    energy_tev: float,
+    *,
+    data_root_override: Optional[Path] = None,
+) -> Path:
+    """Bundled MadGraph central values: ``data/{Process}/{energy}/Simulation/``."""
+    return process_data_dir(process, energy_tev, root=data_root_override) / "Simulation"
+
+
 def load_analysis(
     process: str,
     energy_tev: float,

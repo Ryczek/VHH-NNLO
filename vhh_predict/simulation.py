@@ -1,4 +1,4 @@
-"""Compare HEFT predictions to MadGraph simulation .out files under Results/."""
+"""Compare HEFT predictions to bundled MadGraph .out files under data/.../Simulation/."""
 
 from __future__ import annotations
 
@@ -9,13 +9,11 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from .analysis import package_root
+from .analysis import data_root, process_simulation_dir
 from .core import resolve_scan_axis
 from .out_parser import (
-    OutCentral,
     kappa_from_filename,
     nnlo_sigma_for_process,
-    nnlo_sigma_stat_for_process,
     parse_out_central,
 )
 
@@ -49,24 +47,27 @@ class SimulationScanPoint:
 
 
 def default_results_root() -> Path:
-    return package_root().parent / "Results"
+    """Return bundled ``data/`` root (legacy name kept for notebooks)."""
+    return data_root()
 
 
-def results_dir(
+def _simulation_search_dirs(
     process: str,
     energy_tev: float,
     *,
-    root: Optional[Path] = None,
-) -> Path:
-    root = root or default_results_root()
-    e = float(energy_tev)
-    if abs(e - 13.6) < 0.05:
-        tag = "13_6TeV"
-    elif abs(e - 14.0) < 0.05:
-        tag = "14_0TeV"
-    else:
-        raise KeyError(f"Unsupported energy: {energy_tev} TeV (use 13.6 or 14.0)")
-    return root / process / tag
+    data_root_override: Optional[Path] = None,
+) -> List[Path]:
+    sim_dir = process_simulation_dir(process, energy_tev, data_root_override=data_root_override)
+    if not sim_dir.is_dir():
+        return []
+    return [sim_dir]
+
+
+def _iter_simulation_out_paths(search: Path):
+    for path in sorted(search.glob("*.out")):
+        if "KappaLambda_Value" not in path.name or path.stat().st_size < 50:
+            continue
+        yield path
 
 
 def _kappa_close(a: Sequence[float], b: Sequence[float], tol: float = 1e-4) -> bool:
@@ -85,15 +86,9 @@ def find_simulation_out(
     *,
     root: Optional[Path] = None,
 ) -> Optional[Path]:
-    rdir = results_dir(process, energy_tev, root=root)
     target = tuple(kappa)
-    for sub in ("full", "central", ""):
-        search = rdir / sub if sub else rdir
-        if not search.is_dir():
-            continue
-        for path in sorted(search.glob("*.out")):
-            if "KappaLambda_Value" not in path.name or path.stat().st_size < 50:
-                continue
+    for search in _simulation_search_dirs(process, energy_tev, data_root_override=root):
+        for path in _iter_simulation_out_paths(search):
             try:
                 k_out = kappa_from_filename(path, process=process)
             except ValueError:
@@ -133,7 +128,6 @@ def collect_simulation_scan_points(
     root: Optional[Path] = None,
 ) -> List[SimulationScanPoint]:
     """Collect simulation central values along one κ axis with the rest fixed."""
-    rdir = results_dir(process, energy_tev, root=root)
     idx = _scan_axis_index(process, axis)
     fixed = list(fixed_kappa)
     if process == "ZHH" and len(fixed) == 3:
@@ -141,13 +135,8 @@ def collect_simulation_scan_points(
 
     points: List[SimulationScanPoint] = []
     seen_x: set[float] = set()
-    for sub in ("full", "central", ""):
-        search = rdir / sub if sub else rdir
-        if not search.is_dir():
-            continue
-        for path in sorted(search.glob("*.out")):
-            if "KappaLambda_Value" not in path.name or path.stat().st_size < 50:
-                continue
+    for search in _simulation_search_dirs(process, energy_tev, data_root_override=root):
+        for path in _iter_simulation_out_paths(search):
             try:
                 k_out = tuple(kappa_from_filename(path, process=process))
             except ValueError:

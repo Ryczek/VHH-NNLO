@@ -4,7 +4,14 @@ VHH HEFT closed-form predictions at NNLO.
 Predict σ_LO, σ_NNLO, and K from bundled ``data/`` coefficients.
 """
 
-from .analysis import VHHAnalysis, data_root, load_analysis, plots_dir, process_data_dir
+from .analysis import (
+    VHHAnalysis,
+    data_root,
+    load_analysis,
+    plots_dir,
+    process_data_dir,
+    process_simulation_dir,
+)
 from .core import (
     Prediction,
     SCAN_AXES_W,
@@ -32,6 +39,7 @@ __all__ = [
     "data_root",
     "plots_dir",
     "process_data_dir",
+    "process_simulation_dir",
     "load_analysis",
     "predict",
     "sigma",
