@@ -51,8 +51,16 @@ def data_root() -> Path:
     return package_root() / "data"
 
 
+def results_dir() -> Path:
+    return package_root() / "Results"
+
+
 def plots_dir() -> Path:
-    return package_root() / "plots"
+    return results_dir() / "Plots"
+
+
+def tables_dir() -> Path:
+    return results_dir() / "Tables"
 
 
 def process_data_dir(process: str, energy_tev: float, root: Optional[Path] = None) -> Path:

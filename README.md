@@ -44,7 +44,9 @@ Package/
 │       ├── pdf_alpha_s_covariance.json
 │       └── scale_coefficients.json
 │       └── Simulation/           # MadGraph .out central values (comparison)
-└── plots/                        # notebook output (gitignored *.png)
+├── Results/
+│   ├── Plots/                    # notebook figures (gitignored *.png)
+│   └── Tables/                   # LaTeX tables (gitignored *.tex)
 ```
 
 ### Data files (required)
@@ -65,10 +67,10 @@ Package/
 
 ## Usage
 
-Open `vhh_prediction.ipynb` from the `Package/` directory. Plots are written to `plots/`.
+Open `vhh_prediction.ipynb` from the repo root. Plots go to `Results/Plots/`, tables to `Results/Tables/`.
 
 ```python
-from vhh_predict import load_analysis, predict, scan, plots_dir
+from vhh_predict import load_analysis, predict, scan, plots_dir, tables_dir
 from vhh_predict.plots import plot_sigma_nnlo_and_kfactor
 
 analysis = load_analysis("WplusHH", 14.0)

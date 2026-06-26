@@ -11,6 +11,8 @@ from .analysis import (
     plots_dir,
     process_data_dir,
     process_simulation_dir,
+    results_dir,
+    tables_dir,
 )
 from .core import (
     Prediction,
@@ -26,18 +28,24 @@ from .core import (
     sigma_uncertainties,
     sm_kappa,
 )
-from .simulation import (
-    collect_simulation_scan_points,
-    default_results_root,
-    load_simulation_central,
-    simulation_scan_arrays,
+from .tables import (
+    CHANNELS,
+    TABLE_ENERGIES_TEV,
+    WILSON_INTERVALS,
+    all_channels_latex,
+    build_channel_tables,
+    build_channel_table_groups,
+    latex_wilson_table,
+    latex_wilson_tables_for_process,
 )
 
 __all__ = [
     "VHHAnalysis",
     "Prediction",
     "data_root",
+    "results_dir",
     "plots_dir",
+    "tables_dir",
     "process_data_dir",
     "process_simulation_dir",
     "load_analysis",
@@ -56,6 +64,14 @@ __all__ = [
     "load_simulation_central",
     "collect_simulation_scan_points",
     "simulation_scan_arrays",
+    "WILSON_INTERVALS",
+    "TABLE_ENERGIES_TEV",
+    "CHANNELS",
+    "build_channel_tables",
+    "build_channel_table_groups",
+    "latex_wilson_table",
+    "latex_wilson_tables_for_process",
+    "all_channels_latex",
     "plot_sigma_nnlo_and_kfactor",
     "plot_kfactor_only",
     "plot_sm_enhancement",
@@ -70,6 +86,25 @@ def __getattr__(name: str):
             "plot_sigma_nnlo_and_kfactor": plot_sigma_nnlo_and_kfactor,
             "plot_kfactor_only": plot_kfactor_only,
             "plot_sm_enhancement": plot_sm_enhancement,
+        }[name]
+    if name in (
+        "default_results_root",
+        "load_simulation_central",
+        "collect_simulation_scan_points",
+        "simulation_scan_arrays",
+    ):
+        from .simulation import (
+            collect_simulation_scan_points,
+            default_results_root,
+            load_simulation_central,
+            simulation_scan_arrays,
+        )
+
+        return {
+            "default_results_root": default_results_root,
+            "load_simulation_central": load_simulation_central,
+            "collect_simulation_scan_points": collect_simulation_scan_points,
+            "simulation_scan_arrays": simulation_scan_arrays,
         }[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
