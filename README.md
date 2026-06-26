@@ -8,14 +8,10 @@ This repository accompanies an **in-preparation publication** "Precise predictio
 
 ## What you can do
 
-| Task | How |
-|------|-----|
-| **Spot check** $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$, $K$ at any $\kappa$ | Notebook §2 or `predict()` / `format_prediction()` |
-| **Print** $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ (LO and NNLO) at a point | `format_prediction(..., include_enhancement=True)` or `sm_enhancement(analysis, kappa)` |
-| **Scan** one Wilson coefficient with uncertainty bands | Notebook §4–5 or `scan()` + `plot_sigma_nnlo_and_kfactor()` |
-| **Compare** HEFT vs bundled MadGraph simulation | `format_prediction(..., compare_simulation=True)` — sim $\sigma$ on the same line as HEFT |
-| **SM enhancement scan** $\sigma/\sigma_{\mathrm{SM}}$ vs $\kappa$ | Notebook §6 or `scan_sm_enhancement()` |
-| **Paper tables** at Wilson-interval boundaries | Notebook §7 → `Results/Tables/wilson_tables.tex` |
+
+**Print** $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$,  $K = \sigma_{\mathrm{NNLO}}/\sigma_{\mathrm{LO}}$$, $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ at any $\kappa$ with uncertainties
+**Scan** one Wilson coefficient with uncertainty bands
+**Compare** with MC simulation resutlts (if available)
 
 All coefficients and simulation benchmarks ship in `data/` — no external Monte Carlo or fitting step is required to run predictions.
 
