@@ -51,10 +51,8 @@ def _sigma_scale_envelope(
 
 def _normalize_kappa(process: str, kappa: Tuple[float, ...]) -> Tuple[float, ...]:
     if process == "ZHH":
-        if len(kappa) == 3:
-            return (kappa[0], kappa[1], kappa[2], 1.0)
         if len(kappa) != 4:
-            raise ValueError("ZHH needs 3 or 4 kappa values (kl, kZ, k2Z [, kt])")
+            raise ValueError("ZHH needs 4 kappa values (kl, kZ, k2Z, kt)")
         return tuple(kappa)
     if len(kappa) != 3:
         raise ValueError(f"{process} needs 3 kappa values (kl, kV, k2V)")
@@ -317,14 +315,12 @@ def format_prediction(
         f"{compare_suffix(p.sigma_nnlo, sim_nnlo) if compare_simulation else ''}",
     ]
     if include_enhancement:
-        u_lo_enh = enhancement_uncertainties(analysis, kappa, "LO")
-        u_nn_enh = enhancement_uncertainties(analysis, kappa, "NNLO")
+        enh_lo = sm_enhancement(analysis, kappa, "LO")
+        enh_nn = sm_enhancement(analysis, kappa, "NNLO")
         lines.extend(
             [
-                f"  σ/σ_SM (LO)   HEFT {u_lo_enh['central']:.6f}  "
-                f"{_unc(u_lo_enh['central'], u_lo_enh['scale_up'], u_lo_enh['scale_down'], u_lo_enh['pdf_alpha_s'], unit='')}",
-                f"  σ/σ_SM ({nn_label})  HEFT {u_nn_enh['central']:.6f}  "
-                f"{_unc(u_nn_enh['central'], u_nn_enh['scale_up'], u_nn_enh['scale_down'], u_nn_enh['pdf_alpha_s'], unit='')}",
+                f"  σ_HEFT/σ_SM (LO)   HEFT {enh_lo:.6f}",
+                f"  σ_HEFT/σ_SM ({nn_label})  HEFT {enh_nn:.6f}",
             ]
         )
     lines.append(
@@ -374,8 +370,8 @@ def resolve_scan_axis(process: str, axis: str) -> Tuple[int, str]:
 def _scan_base_kappa(analysis: VHHAnalysis, fixed_kappa: Optional[Tuple[float, ...]]) -> List[float]:
     if analysis.is_zhh:
         base = list(fixed_kappa) if fixed_kappa else [1.0, 1.0, 1.0, 1.0]
-        if len(base) == 3:
-            base.append(1.0)
+        if len(base) != 4:
+            raise ValueError("ZHH needs 4 kappa values (kl, kZ, k2Z, kt)")
         return base
     base = list(fixed_kappa) if fixed_kappa else [1.0, 1.0, 1.0]
     if len(base) != 3:
@@ -391,8 +387,15 @@ def scan(
     vmax: float = 6.0,
     n_points: int = 400,
     fixed_kappa: Optional[Tuple[float, ...]] = None,
+    uncertainties: bool = False,
 ) -> Dict[str, np.ndarray]:
-    """Scan one κ component; others fixed (defaults SM-like)."""
+    """Scan one κ component; others fixed (defaults SM-like).
+
+    Always returns ``sigma_lo``, ``sigma_nnlo``, ``k``, ``sigma_heft_over_sm_lo``,
+    ``sigma_heft_over_sm_nnlo`` plus the scanned κ grid.
+
+    Pass ``uncertainties=True`` to add PDF+αs and scale-band columns (for plots).
+    """
     base = _scan_base_kappa(analysis, fixed_kappa)
     idx, x_key = resolve_scan_axis(analysis.process, axis)
 
@@ -401,17 +404,25 @@ def scan(
         x_key: [],
         "sigma_lo": [],
         "sigma_nnlo": [],
+        "sigma_heft_over_sm_lo": [],
+        "sigma_heft_over_sm_nnlo": [],
         "k": [],
-        "sigma_lo_pdfas": [],
-        "sigma_lo_sup": [],
-        "sigma_lo_inf": [],
-        "sigma_nnlo_pdfas": [],
-        "sigma_nnlo_sup": [],
-        "sigma_nnlo_inf": [],
-        "k_pdfas": [],
-        "k_sup": [],
-        "k_inf": [],
     }
+    if uncertainties:
+        out.update(
+            {
+                "sigma_lo_pdfas": [],
+                "sigma_lo_sup": [],
+                "sigma_lo_inf": [],
+                "sigma_nnlo_pdfas": [],
+                "sigma_nnlo_sup": [],
+                "sigma_nnlo_inf": [],
+                "k_pdfas": [],
+                "k_sup": [],
+                "k_inf": [],
+            }
+        )
+
     for x in xs:
         kappa = list(base)
         kappa[idx] = float(x)
@@ -419,16 +430,19 @@ def scan(
         out[x_key].append(float(x))
         out["sigma_lo"].append(p.sigma_lo)
         out["sigma_nnlo"].append(p.sigma_nnlo)
+        out["sigma_heft_over_sm_lo"].append(sm_enhancement(analysis, tuple(kappa), "LO"))
+        out["sigma_heft_over_sm_nnlo"].append(sm_enhancement(analysis, tuple(kappa), "NNLO"))
         out["k"].append(p.k_factor)
-        out["sigma_lo_pdfas"].append(p.sigma_lo_pdfas)
-        out["sigma_lo_sup"].append(p.sigma_lo_scale_up)
-        out["sigma_lo_inf"].append(p.sigma_lo_scale_down)
-        out["sigma_nnlo_pdfas"].append(p.sigma_nnlo_pdfas)
-        out["sigma_nnlo_sup"].append(p.sigma_nnlo_scale_up)
-        out["sigma_nnlo_inf"].append(p.sigma_nnlo_scale_down)
-        out["k_pdfas"].append(p.k_pdfas)
-        out["k_sup"].append(p.k_scale_up)
-        out["k_inf"].append(p.k_scale_down)
+        if uncertainties:
+            out["sigma_lo_pdfas"].append(p.sigma_lo_pdfas)
+            out["sigma_lo_sup"].append(p.sigma_lo_scale_up)
+            out["sigma_lo_inf"].append(p.sigma_lo_scale_down)
+            out["sigma_nnlo_pdfas"].append(p.sigma_nnlo_pdfas)
+            out["sigma_nnlo_sup"].append(p.sigma_nnlo_scale_up)
+            out["sigma_nnlo_inf"].append(p.sigma_nnlo_scale_down)
+            out["k_pdfas"].append(p.k_pdfas)
+            out["k_sup"].append(p.k_scale_up)
+            out["k_inf"].append(p.k_scale_down)
     return {k: np.asarray(v) for k, v in out.items()}
 
 

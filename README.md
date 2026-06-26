@@ -1,25 +1,97 @@
-# VHH-NNLO — HEFT predictions for double Higgs production in association with a vector boson #
+# VHH-NNLO
 
-Bundled predictions for **$W^\pm HH$** and **$ZHH$** production in the Higgs Effective Field Theory (HEFT) at **LO** and **NNLO QCD**, with PDF + $\alpha_s$ and scale uncertainties.
+Closed-form **HEFT** predictions for **$W^\pm HH$** and **$ZHH$** at **LO** and **NNLO QCD**, with PDF + $\alpha_s$ and scale uncertainties.
 
-This repository accompanies an **in-preparation publication** "Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory". A formal citation (arXiv link and BibTeX) will be added here once the paper is public.
+Bundled coefficient files live in `data/` — no external Monte Carlo or fitting step is required.
+
+This repository accompanies an **in-preparation publication** (*Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory*). A formal citation will be added once the paper is public.
 
 ---
 
 ## What you can do
 
+1. **One point** — print $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$, $K = \sigma_{\mathrm{NNLO}}/\sigma_{\mathrm{LO}}$, and $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ at any $\kappa$.
+2. **Scan** — vary one Wilson coefficient; get uncertainty bands and optional plots.
+3. **Compare** — optional check against bundled MadGraph central values (if present in `data/`).
 
-**Print** $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$,  $K = \sigma_{\mathrm{NNLO}}/\sigma_{\mathrm{LO}}$$, $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ at any $\kappa$ with uncertainties
-**Scan** one Wilson coefficient with uncertainty bands
-**Compare** with MC simulation resutlts (if available)
+---
 
-All coefficients and simulation benchmarks ship in `data/` — no external Monte Carlo or fitting step is required to run predictions.
+## Install and run (recommended)
+
+From the **repository root**:
+
+```bash
+git clone <repo-url>
+cd VHH-NNLO
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -e ".[notebook]"
+jupyter notebook vhh_prediction.ipynb
+```
+
+Then run all cells top to bottom.
+
+**Alternative** (no editable install):
+
+```bash
+pip install -r requirements.txt
+export PYTHONPATH="$(pwd):$PYTHONPATH"
+jupyter notebook vhh_prediction.ipynb
+```
+
+> **Always run the notebook from the repo root.** Paths to `data/` and `Results/` are resolved relative to the project directory.
+
+---
+
+## Notebook guide
+
+Open [`vhh_prediction.ipynb`](vhh_prediction.ipynb). Edit **§1**, then run the rest.
+
+| § | What it does | Main output |
+|---|--------------|-------------|
+| **1** | Choose process, energy, $\kappa$, flags | — |
+| **2** | Spot check at one $\kappa$ | printed $\sigma$, $K$, $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ |
+| **3** | Scan one $\kappa$ axis | `scan_data` in memory; optional JSON in `Results/Points/` |
+| **4** | Single-panel plots | PNGs in `Results/Plots/` |
+| **5** | Two-panel plots | PNGs in `Results/Plots/` |
+| **6** | Wilson benchmark tables | `Results/Tables/wilson_tables.tex` |
+
+### §1 flags (most common)
+
+| Variable | Meaning |
+|----------|---------|
+| `PROCESS` | `WplusHH`, `WminusHH`, or `ZHH` |
+| `ENERGY_TEV` | `13.6` or `14.0` |
+| `KAPPA` | Wilson coefficients at the fixed point (see below) |
+| `COMPARE_SIMULATION` | Compare to MadGraph in §2 only |
+| `SAVE_SCAN_POINTS` | Write scan JSON to `Results/Points/` |
+| `SAVE_PLOTS` | Write plot PNGs to `Results/Plots/` |
+| `SIGMA_INSET` | Zoom inset on $\sigma_{\mathrm{NNLO}}$ panels |
+
+### §4 single-panel plots (in order)
+
+| Plot | File suffix |
+|------|-------------|
+| $\sigma_{\mathrm{NNLO}}$ | `_sigma_nnlo.png` |
+| $\sigma_{\mathrm{LO}}$ | `_sigma_lo.png` |
+| $K$ | `_K.png` |
+| $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ (LO) | `_sigmaSM_LO.png` |
+| $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ (NNLO) | `_sigmaSM_NNLO.png` |
+
+### §5 two-panel plots
+
+| Plot | File suffix |
+|------|-------------|
+| $\sigma_{\mathrm{NNLO}}$ + $K$ | `_sigma_nnlo_K.png` |
+| $\sigma_{\mathrm{NNLO}}$ + $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ (NNLO) | `_sigma_nnlo_sigmaSM_NNLO.png` |
+
+Run **§3 once** before §4–5. Plot cells reuse `scan_data` from §3 (no second scan).
 
 ---
 
 ## Wilson coefficients ($\kappa$)
 
-The package varies the HEFT couplings below. In the SM, all $\kappa = 1$.
+In the SM, all $\kappa = 1$.
 
 | Symbol | Meaning | $W^\pm HH$ | $ZHH$ |
 |--------|---------|:----------:|:-----:|
@@ -30,77 +102,59 @@ The package varies the HEFT couplings below. In the SM, all $\kappa = 1$.
 | $\kappa_{2Z}$ | $Z$-boson operator | — | ✓ |
 | $\kappa_t$ | Top Yukawa / $\overline{\mathrm{MT}}$ operator | — | ✓ |
 
-**Tuple order** passed to `predict()` (must match):
+**Tuple order** (must match exactly):
 
-| Process | `kappa` tuple |
-|---------|----------------|
-| `WplusHH`, `WminusHH` | `(kappa_lambda, kappa_w, kappa_2w)` |
-| `ZHH` | `(kappa_lambda, kappa_z, kappa_2z)` or add `kappa_t` as a fourth entry (defaults to `1`) |
+| Process | `kappa` argument |
+|---------|------------------|
+| `WplusHH`, `WminusHH` | `(kappa_lambda, kappa_w, kappa_2w)` — **3 numbers** |
+| `ZHH` | `(kappa_lambda, kappa_z, kappa_2z, kappa_t)` — **4 numbers** |
 
-**Scan axes** (one coefficient varied, others fixed): `kappa_lambda`, `kappa_w` / `kappa_z`, `kappa_2w` / `kappa_2z`, and `kappa_t` (ZHH only).
+**Scan axes** (one coefficient varied, others held fixed):
 
-**Wilson intervals** used in the benchmark tables (§7); boundaries are rounded to $0.1$ in table headers:
-
-| $\kappa$ | Interval |
-|----------|----------|
-| $\kappa_\lambda$ | $[-1.7,\, 6.6]$ |
-| $\kappa_W$, $\kappa_Z$ | $[0.9,\, 1.2]$ |
-| $\kappa_{2W}$, $\kappa_{2Z}$ | $[0.4,\, 1.6]$ |
-| $\kappa_t$ | $[0.9,\, 1.2]$ |
+- $W^\pm HH$: `kappa_lambda`, `kappa_w`, `kappa_2w`
+- $ZHH$: `kappa_lambda`, `kappa_z`, `kappa_2z`, `kappa_t`
 
 ---
 
-## Quick start
-
-### Install
-
-```bash
-git clone <repo-url>
-cd VHH-NNLO
-python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e ".[notebook]"
-```
-
-Or, without editable install:
-
-```bash
-pip install -r requirements.txt
-export PYTHONPATH="$(pwd):$PYTHONPATH"
-```
-
-### Notebook (recommended)
-
-Open [`vhh_prediction.ipynb`](vhh_prediction.ipynb) from the **repo root** and run all cells.
-
-| Section | Content |
-|---------|---------|
-| 1 | Choose process, energy, $\kappa$, flags |
-| 2 | Print $\sigma$, $\sigma/\sigma_{\mathrm{SM}}$, and $K$ ($K$ without uncertainties; sim on $\sigma$ lines when enabled) |
-| 3 | Structured `predict()` output |
-| 4–5 | $\kappa$ scans → `Results/Plots/` |
-| 6 | SM enhancement (optional) |
-| 7 | Wilson benchmark tables → `Results/Tables/wilson_tables.tex` |
-
-### Python API
+## Python API (minimal)
 
 ```python
-from vhh_predict import load_analysis, predict, format_prediction, sm_enhancement, scan
-from vhh_predict.plots import plot_sigma_nnlo_and_kfactor
+from vhh_predict import load_analysis, predict, format_prediction, scan_and_save
 
+# W± example (3-tuple)
 analysis = load_analysis("WplusHH", 14.0)
-kappa = (1.0, 1.0, 1.0)   # SM: (κ_λ, κ_W, κ_2W)
+kappa = (1.0, 1.0, 1.0)   # SM
 
-p = predict(analysis, kappa)
-print(p.sigma_lo, p.sigma_nnlo, p.k_factor)
-print(sm_enhancement(analysis, kappa, "NNLO"))  # σ_HEFT/σ_SM at NNLO
+print(format_prediction(analysis, kappa, compare_simulation=True))
 
-print(format_prediction(analysis, kappa, compare_simulation=True, include_enhancement=True))
-
-scan_data = scan(analysis, axis="kappa_lambda", vmin=-1.0, vmax=2.0, fixed_kappa=kappa)
+scan_data, path = scan_and_save(
+    analysis,
+    "kappa_lambda",
+    vmin=-1.0,
+    vmax=2.0,
+    fixed_kappa=kappa,
+    n_points=400,
+    uncertainties=True,   # bands for plotting (stays in memory)
+    save=True,            # write Results/Points/...json
+)
 ```
 
-Paper-ready LaTeX tables:
+```python
+# ZHH example (4-tuple — include kappa_t)
+analysis = load_analysis("ZHH", 14.0)
+kappa = (3.0, 1.0, 1.0, 1.0)
+```
+
+Plots (after a scan with `uncertainties=True`):
+
+```python
+from vhh_predict.plots import plot_sigma_nnlo_and_kfactor, plot_sigma_lo_only
+
+plot_sigma_lo_only(scan_data, output="Results/Plots/example_sigma_lo.png")
+plot_sigma_nnlo_and_kfactor(scan_data, output="Results/Plots/example_sigma_K.png")
+```
+
+LaTeX Wilson tables:
 
 ```python
 from vhh_predict import all_channels_latex, tables_dir
@@ -110,40 +164,62 @@ from vhh_predict import all_channels_latex, tables_dir
 
 ---
 
+## Output files
+
+```
+Results/
+├── Points/    # κ-scan JSON from scan_and_save()
+├── Plots/     # figures from the notebook
+└── Tables/    # LaTeX tables (wilson_tables.tex)
+```
+
+### Scan JSON (`Results/Points/`)
+
+Filename: `{Process}_{energy}TeV_{axis}.json`  
+Example: `ZHH_14.0TeV_kappa_t.json`
+
+| Field | Meaning |
+|-------|---------|
+| `kappa_*` | scanned Wilson coefficient grid |
+| `sigma_lo`, `sigma_nnlo` | HEFT cross sections [fb] |
+| `k` | $\sigma_{\mathrm{NNLO}}/\sigma_{\mathrm{LO}}$ |
+| `sigma_heft_over_sm_lo`, `sigma_heft_over_sm_nnlo` | $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ |
+
+Reload: `load_scan_results(path)`. Uncertainty bands are **not** stored in the JSON; pass `uncertainties=True` to `scan()` / `scan_and_save()` when you need them for plots.
+
+---
+
 ## Repository layout
 
 ```
 VHH-NNLO/
-├── vhh_prediction.ipynb       # main entry point
+├── vhh_prediction.ipynb       # start here
+├── pyproject.toml             # package metadata for pip install
+├── requirements.txt           # flat dependency list (alternative install)
 ├── vhh_predict/               # Python package
 ├── data/
 │   └── {Process}/{13_6TeV|14_0TeV}/
 │       ├── pdf_alpha_s_covariance.json
 │       ├── scale_coefficients.json
-│       ├── {Process}_{energy}_analysis_A.txt   # human reference (not read at runtime)
-│       └── Simulation/*.out                    # MadGraph central values (comparison)
-└── Results/
-    ├── Plots/                 # figures from the notebook
-    └── Tables/                # LaTeX tables (e.g. wilson_tables.tex)
+│       └── Simulation/*.out   # MadGraph central values (optional comparison)
+└── Results/                   # generated outputs (see above)
 ```
 
-### Bundled data
-
-| File | Role |
-|------|------|
-| `pdf_alpha_s_covariance.json` | Central $A_i$, PDF and $\alpha_s$ deltas, covariance blocks |
-| `scale_coefficients.json` | Refitted $A_i$ at seven $(\mu_R, \mu_F)$ points for scale envelopes |
-| `Simulation/*.out` | MadGraph central $\sigma$ for validation overlays |
-| `*_analysis_A.txt` | Methods and tables for human inspection only |
+| File in `data/` | Role |
+|-----------------|------|
+| `pdf_alpha_s_covariance.json` | Central $A_i$, PDF/$\alpha_s$ deltas, covariance |
+| `scale_coefficients.json` | Refitted $A_i$ at seven scale points |
+| `Simulation/*.out` | MadGraph central $\sigma$ for validation |
+| `*_analysis_A.txt` | Human-readable reference only (not read at runtime) |
 
 ---
 
 ## Citation
 
-Publication **in preparation**. If you use this code or the bundled numbers before the paper appears, please contact the authors for a preprint reference. A BibTeX entry will be added to this README upon release.
+Publication **in preparation**. Contact the authors for a preprint reference before the paper is public. BibTeX will be added here upon release.
 
 ---
 
 ## License
 
-See repository license file (if present). For questions about the physics or bundled inputs, refer to the in-preparation paper or open an issue.
+See the repository license file (if present).

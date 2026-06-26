@@ -63,6 +63,10 @@ def tables_dir() -> Path:
     return results_dir() / "Tables"
 
 
+def points_dir() -> Path:
+    return results_dir() / "Points"
+
+
 def process_data_dir(process: str, energy_tev: float, root: Optional[Path] = None) -> Path:
     root = root or data_root()
     e = float(energy_tev)

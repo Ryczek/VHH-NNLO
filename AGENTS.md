@@ -4,26 +4,28 @@ Context for AI agents working in this repository.
 
 ## Purpose
 
-Closed-form **HEFT** predictions for vector-boson-fusion Higgs-pair production:
+Closed-form **HEFT** predictions for vector-boson-associated Higgs-pair production:
 
-- `WplusHH`, `WminusHH`, `ZHH`
-- Centre-of-mass energies: **13.6 TeV** and **14.0 TeV**
-- Orders: **LO** and **NNLO** (ZHH NNLO cross section uses the HHZ component)
+- Processes: `WplusHH`, `WminusHH`, `ZHH`
+- Energies: **13.6 TeV** and **14.0 TeV**
+- Orders: **LO** and **NNLO** (ZHH NNLO uses the HHZ component label in outputs)
 
-Predictions use bundled coefficient JSON under `data/`, not external Monte Carlo.
+Predictions use bundled JSON under `data/`, not external Monte Carlo.
 
 ## Repository layout
 
 ```
 VHH-NNLO/
 ├── vhh_prediction.ipynb      # Main entry point (run from repo root)
-├── vhh_predict/              # Python package
-│   ├── analysis.py           # load_analysis(), data paths
-│   ├── core.py               # predict(), scan(), format_prediction()
+├── pyproject.toml            # pip packaging config
+├── vhh_predict/
+│   ├── analysis.py           # load_analysis(), path helpers (data_root, plots_dir, points_dir, …)
+│   ├── core.py               # predict(), scan(), format_prediction(), sm_enhancement()
+│   ├── scan_io.py            # scan_and_save(), load_scan_results(), scan_points_path()
 │   ├── tables.py             # Wilson-interval benchmark tables + LaTeX
-│   ├── simulation.py         # Compare to bundled MadGraph .out files
-│   ├── out_parser.py         # Parse .out central σ
-│   ├── monomials.py          # HEFT monomial vectors m(κ)
+│   ├── simulation.py         # MadGraph .out comparison helpers
+│   ├── out_parser.py
+│   ├── monomials.py
 │   ├── covariance_matrices.py
 │   ├── scale_coefficients.py
 │   └── plots.py
@@ -32,12 +34,14 @@ VHH-NNLO/
 │       ├── pdf_alpha_s_covariance.json
 │       ├── scale_coefficients.json
 │       ├── {Process}_{energy}_analysis_A.txt   # human reference only
-│       └── Simulation/*.out                    # MadGraph central values
-├── Results/
-│   ├── Plots/                # notebook figures (gitignored *.png)
-│   └── Tables/               # LaTeX tables (gitignored *.tex)
-└── AGENTS.md
+│       └── Simulation/*.out
+└── Results/
+    ├── Points/               # scan JSON from scan_and_save()
+    ├── Plots/                # notebook figures
+    └── Tables/               # LaTeX tables
 ```
+
+Path resolution: `package_root()` = parent of `vhh_predict/` (repo root in dev). `data_root()` = `package_root() / "data"`.
 
 ## Physics / API
 
@@ -45,79 +49,100 @@ VHH-NNLO/
 
 σ(κ) = **m**(κ)ᵀ **A**, with PDF+αs uncertainty √(mᵀ C m).
 
-- Scale uncertainty: 7-point envelope from refitted **A** at each (μR, μF) in `scale_coefficients.json`
-- K-factor: σ_NNLO / σ_LO with propagated uncertainties
+- Scale uncertainty: 7-point envelope from refitted **A** in `scale_coefficients.json`
+- K-factor: σ_NNLO / σ_LO (central value printed; no K uncertainty in `format_prediction()`)
 
-### κ tuple layout (order matters)
+### κ tuple layout (order matters — no auto-padding)
 
 | Process | κ tuple | Scan axes |
 |---------|---------|-----------|
-| `WplusHH`, `WminusHH` | `(κ_λ, κ_W, κ_2W)` | `kappa_lambda`, `kappa_w`, `kappa_2w` |
-| `ZHH` | `(κ_λ, κ_Z, κ_2Z, κ_t)` — κ_t defaults to 1 if omitted | `kappa_lambda`, `kappa_z`, `kappa_2z`, `kappa_t` |
+| `WplusHH`, `WminusHH` | `(κ_λ, κ_W, κ_2W)` — **3 values** | `kappa_lambda`, `kappa_w`, `kappa_2w` |
+| `ZHH` | `(κ_λ, κ_Z, κ_2Z, κ_t)` — **4 values** | `kappa_lambda`, `kappa_z`, `kappa_2z`, `kappa_t` |
 
-SM point: all κ = 1 (`sm_kappa(process)`).
+SM: all κ = 1 (`sm_kappa(process)`).
 
-### Wilson-coefficient intervals (benchmark tables)
-
-Used in `vhh_predict/tables.py` and notebook **section 7**:
+### Wilson-coefficient intervals (benchmark tables, §6)
 
 | Coefficient | Min | SM | Max |
 |-------------|-----|-----|-----|
 | κ_λ | −1.7 | 1 | 6.6 |
-| κ_W | 0.9 | 1 | 1.2 |
-| κ_Z | 0.9 | 1 | 1.2 |
-| κ_{2W} | 0.4 | 1 | 1.6 |
-| κ_{2Z} | 0.4 | 1 | 1.6 |
+| κ_W, κ_Z | 0.9 | 1 | 1.2 |
+| κ_{2W}, κ_{2Z} | 0.4 | 1 | 1.6 |
 | κ_t | 0.9 | 1 | 1.2 |
 
-Table convention: **one wide table per channel** (ZHH: **two tables** — $\kappa_\lambda$+$\kappa_t$ and $\kappa_Z$+$\kappa_{2Z}$). LaTeX uses `multirow` + `\cline`; requires `\usepackage{multirow}`.
-
-Cell format (plain): `σ +scale_up%/-scale_down% ±pdf%`  
-LaTeX: `σ_{+x%}^{-y%} \pm z%`
+ZHH tables: **two groups** — `(kappa_lambda, kappa_t)` and `(kappa_z, kappa_2z)`.
 
 ### Simulation comparison
 
-Bundled MadGraph `.out` files live in `data/{Process}/{energy}/Simulation/`.
+`data/{Process}/{energy}/Simulation/*.out` — MadGraph central values only.
 
-- `load_simulation_central(process, energy, kappa)` — spot check
-- `collect_simulation_scan_points(...)` — scan overlays
-- Enable in notebook with `COMPARE_SIMULATION = True`
-
-Filenames encode κ values, e.g.  
-`WplusHH_13_6TeV_KappaLambda_Value_1_0_KappaV_Value_1_0_Kappa2V_Value_1_0.out`
+- `COMPARE_SIMULATION` in notebook: **§2 spot check only** (not on scan plots)
+- `load_simulation_central()`, `collect_simulation_scan_points()` in `simulation.py`
 
 ## Key functions
 
 ```python
-from vhh_predict import load_analysis, predict, format_prediction, scan
-from vhh_predict import build_channel_tables, latex_wilson_table, all_channels_latex
-from vhh_predict import plots_dir, tables_dir, results_dir
+from vhh_predict import (
+    load_analysis, predict, format_prediction, scan, scan_and_save,
+    load_scan_results, build_channel_tables, all_channels_latex,
+    plots_dir, points_dir, tables_dir, results_dir,
+)
 
 analysis = load_analysis("ZHH", 14.0)
-p = predict(analysis, (1.0, 1.0, 1.0))          # Prediction dataclass
-df = build_channel_tables("WplusHH")               # Wilson benchmark table
-tex = latex_wilson_table("ZHH")                    # LaTeX for paper
-# Output paths: results_dir()/Plots, results_dir()/Tables
+p = predict(analysis, (1.0, 1.0, 1.0, 1.0))   # ZHH needs 4-tuple
+
+scan_data, path = scan_and_save(
+    analysis, "kappa_t", vmin=0.85, vmax=1.15,
+    fixed_kappa=(3.0, 1.0, 1.0, 1.0),
+    n_points=400, uncertainties=True, save=True,
+)
 ```
 
-## Notebook sections
+### Scan I/O
 
-1. Configuration (`PROCESS`, `ENERGY_TEV`, `KAPPA`, flags)
-2. Spot check (`format_prediction`)
-3. Structured `predict()` output
-4. κ scan plots (σ_NNLO + K)
-5. K-factor only plot
-6. SM enhancement scan (optional)
-7. **Wilson benchmark tables** — all three channels + LaTeX → `Results/Tables/wilson_tables.tex`
+- `scan_and_save()` — primary API: one scan + optional save to `Results/Points/{Process}_{energy}TeV_{axis}.json`
+- Saved JSON (v2): κ grid + `sigma_lo`, `sigma_nnlo`, `k`, `sigma_heft_over_sm_lo`, `sigma_heft_over_sm_nnlo` (no uncertainty columns)
+- `scan(..., uncertainties=True)` adds PDF/scale bands **in memory** for plotting
+- `load_scan_results()` supports v1 and v2 formats
+
+### Plot helpers (`vhh_predict/plots.py`)
+
+| Function | Use |
+|----------|-----|
+| `plot_sigma_only` | Single panel σ_NNLO |
+| `plot_sigma_lo_only` | Single panel σ_LO |
+| `plot_kfactor_only` | Single panel K |
+| `plot_enhancement_only` | Single panel σ_HEFT/σ_SM (LO or NNLO) |
+| `plot_sigma_nnlo_and_kfactor` | Two panel: σ_NNLO + K |
+| `plot_sigma_nnlo_and_enhancement_nnlo` | Two panel: σ_NNLO + σ_HEFT/σ_SM (NNLO) |
+| `plot_sm_enhancement` | Legacy two-panel LO+NNLO enhancement (not used in notebook) |
+
+Enhancement plots read `sigma_heft_over_sm_*` from scan data.
+
+## Notebook sections (`vhh_prediction.ipynb`)
+
+1. **Configuration** — `PROCESS`, `ENERGY_TEV`, `KAPPA`, `SAVE_SCAN_POINTS`, `SAVE_PLOTS`, `SIGMA_INSET`, `COMPARE_SIMULATION`
+2. **Spot check** — `format_prediction()` (σ, K, σ_HEFT/σ_SM; sim on σ lines if enabled)
+3. **Scan** — single `scan_and_save(..., uncertainties=True)` → `scan_data` (+ optional Points JSON)
+4. **Single-panel plots** — σ_NNLO, σ_LO, K, σ_HEFT/σ_SM LO, σ_HEFT/σ_SM NNLO
+5. **Two-panel plots** — σ_NNLO+K; σ_NNLO+σ_HEFT/σ_SM NNLO
+6. **Wilson tables** — all channels + LaTeX → `Results/Tables/wilson_tables.tex`
+
+Plot cells reuse `scan_data` from §3 (no second scan, no sim overlay on scans).
 
 ## Development notes
 
-- Run notebook from **repo root** (`PYTHONPATH` includes `.`).
-- `pip install -e ".[notebook]"` for editable install.
-- Do not commit `Results/Plots/*.png` or `Results/Tables/*.tex`; both are regenerated by the notebook.
-- HEFT coefficients do not depend on m_h in this package; table rows use m_h = 125 GeV as a label only.
-- When adding simulation points, use `.out` extension and place under `data/.../Simulation/`.
+- Run notebook from **repo root**; setup cell adds `.` to `sys.path`.
+- Install: `pip install -e ".[notebook]"` (see `pyproject.toml`).
+- `requirements.txt` is a flat alternative to the pyproject extras.
+- Do not commit generated `Results/Plots/*.png`, `Results/Tables/*.tex` unless intentional.
+- `Results/Points/` may be committed for published scan grids.
+- HEFT coefficients do not depend on m_h in code; tables label m_h = 125 GeV only.
+- New simulation points: `.out` files under `data/.../Simulation/` with existing filename convention.
 
-## Packaging
+## Packaging (`pyproject.toml`)
 
-`pyproject.toml` ships `data/**/*` as package data. Simulation `.out` files should remain in `data/` so downloads include comparison data.
+- Defines package `vhh-predict`, Python ≥3.10, dependencies (numpy, matplotlib, pandas).
+- Optional `[notebook]` extra: jupyter, ipykernel.
+- `pip install -e ".[notebook]"` installs the package in editable mode from the repo.
+- `[tool.setuptools.data-files]` bundles `data/**/*` for non-editable installs.

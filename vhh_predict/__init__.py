@@ -9,6 +9,7 @@ from .analysis import (
     data_root,
     load_analysis,
     plots_dir,
+    points_dir,
     process_data_dir,
     process_simulation_dir,
     results_dir,
@@ -29,6 +30,7 @@ from .core import (
     sm_enhancement,
     sm_kappa,
 )
+from .scan_io import load_scan_results, scan_and_save, scan_points_path
 from .tables import (
     CHANNELS,
     TABLE_ENERGIES_TEV,
@@ -46,6 +48,7 @@ __all__ = [
     "data_root",
     "results_dir",
     "plots_dir",
+    "points_dir",
     "tables_dir",
     "process_data_dir",
     "process_simulation_dir",
@@ -62,6 +65,9 @@ __all__ = [
     "SCAN_AXES_W",
     "SCAN_AXES_Z",
     "scan_sm_enhancement",
+    "scan_and_save",
+    "load_scan_results",
+    "scan_points_path",
     "default_results_root",
     "load_simulation_central",
     "collect_simulation_scan_points",
@@ -75,18 +81,42 @@ __all__ = [
     "latex_wilson_tables_for_process",
     "all_channels_latex",
     "plot_sigma_nnlo_and_kfactor",
+    "plot_sigma_nnlo_and_enhancement_nnlo",
+    "plot_sigma_only",
+    "plot_sigma_lo_only",
     "plot_kfactor_only",
+    "plot_enhancement_only",
     "plot_sm_enhancement",
 ]
 
 
 def __getattr__(name: str):
-    if name in ("plot_sigma_nnlo_and_kfactor", "plot_kfactor_only", "plot_sm_enhancement"):
-        from .plots import plot_kfactor_only, plot_sigma_nnlo_and_kfactor, plot_sm_enhancement
+    if name in (
+        "plot_sigma_nnlo_and_kfactor",
+        "plot_sigma_nnlo_and_enhancement_nnlo",
+        "plot_sigma_only",
+        "plot_sigma_lo_only",
+        "plot_kfactor_only",
+        "plot_enhancement_only",
+        "plot_sm_enhancement",
+    ):
+        from .plots import (
+            plot_enhancement_only,
+            plot_kfactor_only,
+            plot_sigma_lo_only,
+            plot_sigma_nnlo_and_enhancement_nnlo,
+            plot_sigma_nnlo_and_kfactor,
+            plot_sigma_only,
+            plot_sm_enhancement,
+        )
 
         return {
             "plot_sigma_nnlo_and_kfactor": plot_sigma_nnlo_and_kfactor,
+            "plot_sigma_nnlo_and_enhancement_nnlo": plot_sigma_nnlo_and_enhancement_nnlo,
+            "plot_sigma_only": plot_sigma_only,
+            "plot_sigma_lo_only": plot_sigma_lo_only,
             "plot_kfactor_only": plot_kfactor_only,
+            "plot_enhancement_only": plot_enhancement_only,
             "plot_sm_enhancement": plot_sm_enhancement,
         }[name]
     if name in (

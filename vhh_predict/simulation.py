@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from .analysis import data_root, process_simulation_dir
-from .core import resolve_scan_axis
+from .core import resolve_scan_axis, _normalize_kappa
 from .out_parser import (
     kappa_from_filename,
     nnlo_sigma_for_process,
@@ -129,9 +129,7 @@ def collect_simulation_scan_points(
 ) -> List[SimulationScanPoint]:
     """Collect simulation central values along one κ axis with the rest fixed."""
     idx = _scan_axis_index(process, axis)
-    fixed = list(fixed_kappa)
-    if process == "ZHH" and len(fixed) == 3:
-        fixed.append(1.0)
+    fixed = list(_normalize_kappa(process, fixed_kappa))
 
     points: List[SimulationScanPoint] = []
     seen_x: set[float] = set()
