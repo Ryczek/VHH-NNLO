@@ -161,6 +161,15 @@ def sm_kappa(process: str) -> Tuple[float, ...]:
     return (1.0, 1.0, 1.0)
 
 
+def sm_enhancement(
+    analysis: VHHAnalysis,
+    kappa: Tuple[float, ...],
+    order: str = "NNLO",
+) -> float:
+    """σ_HEFT(κ)/σ_HEFT(SM) at LO or NNLO (HHZ for ZHH)."""
+    return enhancement_uncertainties(analysis, kappa, order)["central"]
+
+
 def enhancement_uncertainties(
     analysis: VHHAnalysis,
     kappa: Tuple[float, ...],
@@ -256,9 +265,10 @@ def format_prediction(
     *,
     as_percent: bool = False,
     compare_simulation: bool = False,
+    include_enhancement: bool = True,
     results_root: Optional[Path] = None,
 ) -> str:
-    from .simulation import compare_line, load_simulation_central
+    from .simulation import compare_suffix, load_simulation_central
 
     kappa = _normalize_kappa(analysis.process, kappa)
     p = predict(analysis, kappa)
@@ -272,6 +282,9 @@ def format_prediction(
         )
         if compare_simulation
         else None
+    )
+    sim_nnlo = (
+        sim.sigma_hhz if sim and analysis.is_zhh else sim.sigma_nnlo if sim else None
     )
 
     def _unc(central: float, up: float, down: float, pdf: float, unit: str = "fb") -> str:
@@ -296,17 +309,28 @@ def format_prediction(
 
     lines = [
         header,
-        f"  σ_LO   HEFT {p.sigma_lo:.6f}  {_unc(p.sigma_lo, p.sigma_lo_scale_up, p.sigma_lo_scale_down, p.sigma_lo_pdfas)}",
+        f"  σ_LO   HEFT {p.sigma_lo:.6f}  "
+        f"{_unc(p.sigma_lo, p.sigma_lo_scale_up, p.sigma_lo_scale_down, p.sigma_lo_pdfas)}"
+        f"{compare_suffix(p.sigma_lo, sim.sigma_lo if sim else None) if compare_simulation else ''}",
         f"  σ_{nn_label}  HEFT {p.sigma_nnlo:.6f}  "
-        f"{_unc(p.sigma_nnlo, p.sigma_nnlo_scale_up, p.sigma_nnlo_scale_down, p.sigma_nnlo_pdfas)}",
-        f"  K      HEFT {p.k_factor:.6f}  "
-        f"{_unc(p.k_factor, p.k_scale_up, p.k_scale_down, p.k_pdfas, unit='')}",
+        f"{_unc(p.sigma_nnlo, p.sigma_nnlo_scale_up, p.sigma_nnlo_scale_down, p.sigma_nnlo_pdfas)}"
+        f"{compare_suffix(p.sigma_nnlo, sim_nnlo) if compare_simulation else ''}",
     ]
-    if compare_simulation:
-        lines.append(f"             {compare_line(p.sigma_lo, sim.sigma_lo if sim else None)}")
-        sim_nnlo = (sim.sigma_hhz if sim and analysis.is_zhh else sim.sigma_nnlo if sim else None)
-        lines.append(f"             {compare_line(p.sigma_nnlo, sim_nnlo)}")
-        lines.append(f"             {compare_line(p.k_factor, sim.k_measured if sim else None)}")
+    if include_enhancement:
+        u_lo_enh = enhancement_uncertainties(analysis, kappa, "LO")
+        u_nn_enh = enhancement_uncertainties(analysis, kappa, "NNLO")
+        lines.extend(
+            [
+                f"  σ/σ_SM (LO)   HEFT {u_lo_enh['central']:.6f}  "
+                f"{_unc(u_lo_enh['central'], u_lo_enh['scale_up'], u_lo_enh['scale_down'], u_lo_enh['pdf_alpha_s'], unit='')}",
+                f"  σ/σ_SM ({nn_label})  HEFT {u_nn_enh['central']:.6f}  "
+                f"{_unc(u_nn_enh['central'], u_nn_enh['scale_up'], u_nn_enh['scale_down'], u_nn_enh['pdf_alpha_s'], unit='')}",
+            ]
+        )
+    lines.append(
+        f"  K      HEFT {p.k_factor:.6f}"
+        f"{compare_suffix(p.k_factor, sim.k_measured if sim else None) if compare_simulation else ''}"
+    )
     return "\n".join(lines)
 
 

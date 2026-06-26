@@ -1,8 +1,8 @@
-# VHH-NNLO — HEFT predictions for vector-boson-fusion $HH$
+# VHH-NNLO — HEFT predictions for double Higgs production in association with a vector boson #
 
-Fast, bundled predictions for **$W^\pm HH$** and **$ZHH$** production in the Higgs Effective Field Theory (HEFT) at **LO** and **NNLO QCD**, with PDF + $\alpha_s$ and scale uncertainties.
+Bundled predictions for **$W^\pm HH$** and **$ZHH$** production in the Higgs Effective Field Theory (HEFT) at **LO** and **NNLO QCD**, with PDF + $\alpha_s$ and scale uncertainties.
 
-This repository accompanies an **in-preparation publication** on VBF Higgs-pair production at NNLO. A formal citation (arXiv link and BibTeX) will be added here once the paper is public.
+This repository accompanies an **in-preparation publication** "Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory". A formal citation (arXiv link and BibTeX) will be added here once the paper is public.
 
 ---
 
@@ -11,29 +11,13 @@ This repository accompanies an **in-preparation publication** on VBF Higgs-pair 
 | Task | How |
 |------|-----|
 | **Spot check** $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$, $K$ at any $\kappa$ | Notebook §2 or `predict()` / `format_prediction()` |
+| **Print** $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ (LO and NNLO) at a point | `format_prediction(..., include_enhancement=True)` or `sm_enhancement(analysis, kappa)` |
 | **Scan** one Wilson coefficient with uncertainty bands | Notebook §4–5 or `scan()` + `plot_sigma_nnlo_and_kfactor()` |
-| **Compare** HEFT vs bundled MadGraph simulation | Set `COMPARE_SIMULATION = True` in the notebook |
-| **SM enhancement** $\sigma/\sigma_{\mathrm{SM}}$ vs $\kappa$ | Notebook §6 |
+| **Compare** HEFT vs bundled MadGraph simulation | `format_prediction(..., compare_simulation=True)` — sim $\sigma$ on the same line as HEFT |
+| **SM enhancement scan** $\sigma/\sigma_{\mathrm{SM}}$ vs $\kappa$ | Notebook §6 or `scan_sm_enhancement()` |
 | **Paper tables** at Wilson-interval boundaries | Notebook §7 → `Results/Tables/wilson_tables.tex` |
 
 All coefficients and simulation benchmarks ship in `data/` — no external Monte Carlo or fitting step is required to run predictions.
-
----
-
-## Physics
-
-Cross sections are evaluated as a quadratic form in HEFT monomials:
-
-$$
-\sigma(\kappa) = \mathbf{m}(\kappa)^{\mathsf T}\mathbf{A},
-\qquad
-\Delta\sigma = \sqrt{\mathbf{m}^{\mathsf T}\mathbf{C}\,\mathbf{m}}
-$$
-
-- **Processes**: `WplusHH`, `WminusHH`, `ZHH`
-- **Energies**: $\sqrt{s} = 13.6$ and $14$ TeV
-- **Orders**: LO and NNLO (for `ZHH`, the NNLO result uses the HHZ component)
-- **Uncertainties**: PDF + $\alpha_s$ from bundled covariances; scale from a 7-point $(\mu_R, \mu_F)$ envelope
 
 ---
 
@@ -96,7 +80,7 @@ Open [`vhh_prediction.ipynb`](vhh_prediction.ipynb) from the **repo root** and r
 | Section | Content |
 |---------|---------|
 | 1 | Choose process, energy, $\kappa$, flags |
-| 2 | Print $\sigma$ and $K$ with uncertainties |
+| 2 | Print $\sigma$, $\sigma/\sigma_{\mathrm{SM}}$, and $K$ ($K$ without uncertainties; sim on $\sigma$ lines when enabled) |
 | 3 | Structured `predict()` output |
 | 4–5 | $\kappa$ scans → `Results/Plots/` |
 | 6 | SM enhancement (optional) |
@@ -105,7 +89,7 @@ Open [`vhh_prediction.ipynb`](vhh_prediction.ipynb) from the **repo root** and r
 ### Python API
 
 ```python
-from vhh_predict import load_analysis, predict, format_prediction, scan
+from vhh_predict import load_analysis, predict, format_prediction, sm_enhancement, scan
 from vhh_predict.plots import plot_sigma_nnlo_and_kfactor
 
 analysis = load_analysis("WplusHH", 14.0)
@@ -113,8 +97,9 @@ kappa = (1.0, 1.0, 1.0)   # SM: (κ_λ, κ_W, κ_2W)
 
 p = predict(analysis, kappa)
 print(p.sigma_lo, p.sigma_nnlo, p.k_factor)
+print(sm_enhancement(analysis, kappa, "NNLO"))  # σ_HEFT/σ_SM at NNLO
 
-print(format_prediction(analysis, kappa, compare_simulation=True))
+print(format_prediction(analysis, kappa, compare_simulation=True, include_enhancement=True))
 
 scan_data = scan(analysis, axis="kappa_lambda", vmin=-1.0, vmax=2.0, fixed_kappa=kappa)
 ```

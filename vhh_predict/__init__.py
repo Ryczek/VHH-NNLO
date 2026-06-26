@@ -26,6 +26,7 @@ from .core import (
     scan_sm_enhancement,
     sigma,
     sigma_uncertainties,
+    sm_enhancement,
     sm_kappa,
 )
 from .tables import (
@@ -53,6 +54,7 @@ __all__ = [
     "sigma",
     "sigma_uncertainties",
     "sm_kappa",
+    "sm_enhancement",
     "format_prediction",
     "scan",
     "scan_axes",
