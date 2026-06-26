@@ -1,10 +1,10 @@
-"""κ-scan: one function to evaluate and save point tables under ``Results/Points/``."""
+"""κ-scan: evaluate and save point tables under ``Results/Points/``."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
@@ -28,8 +28,8 @@ def scan_points_path(
     *,
     root: Optional[Path] = None,
 ) -> Path:
-    """``Results/Points/{Process}_{energy}TeV_{axis}.json``."""
-    name = f"{process}_{float(energy_tev):g}TeV_{scan_x_key}.json"
+    """``Results/Points/{Process}_{energy}TeV_{axis}.txt``."""
+    name = f"{process}_{float(energy_tev):g}TeV_{scan_x_key}.txt"
     return (root or points_dir()) / name
 
 
@@ -47,11 +47,12 @@ def scan_and_save(
 ) -> Tuple[ArrayDict, Path]:
     """Scan one κ component and optionally save σ_LO, σ_NNLO, K, σ_HEFT/σ_SM.
 
-  Returns ``(scan_data, path)``. The saved JSON contains only the scanned κ grid
-  and the five physics columns above (no uncertainty bands).
+    Returns ``(scan_data, path)``. The saved ``.txt`` is a comment header plus a
+    tab-separated table (scanned κ and five physics columns). Uncertainty bands
+    are not written to disk.
 
-  Set ``uncertainties=True`` if you need PDF/scale bands for plotting (extra
-  columns in memory only; the file stays slim).
+    Set ``uncertainties=True`` if you need PDF/scale bands for plotting (in
+    memory only).
     """
     from .core import resolve_scan_axis, scan
 
@@ -85,8 +86,110 @@ def scan_and_save(
 
 
 def load_scan_results(path: Path) -> Dict[str, Any]:
-    """Load a scan JSON; array values are numpy ndarrays."""
-    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    """Load a scan ``.txt`` (or legacy ``.json``); array values are numpy ndarrays."""
+    path = Path(path)
+    if path.suffix.lower() == ".json":
+        return _load_scan_json(path)
+    return _load_scan_txt(path)
+
+
+def _slim_scan_payload(
+    data: ArrayDict,
+    scan_x_key: str,
+) -> Dict[str, np.ndarray]:
+    slim: Dict[str, np.ndarray] = {scan_x_key: data[scan_x_key]}
+    for key in SCAN_VALUE_KEYS:
+        slim[key] = data[key]
+    return slim
+
+
+def _write_scan_file(
+    path: Path,
+    *,
+    analysis: VHHAnalysis,
+    scan_axis: str,
+    scan_x_key: str,
+    vmin: float,
+    vmax: float,
+    n_points: int,
+    fixed_kappa: Tuple[float, ...],
+    data: ArrayDict,
+) -> Path:
+    slim = _slim_scan_payload(data, scan_x_key)
+    columns = [scan_x_key, *SCAN_VALUE_KEYS]
+    rows = np.column_stack([slim[col] for col in columns])
+
+    header_lines = [
+        "# VHH-NNLO scan points",
+        f"# process: {analysis.process}",
+        f"# energy_tev: {float(analysis.energy_tev):g}",
+        f"# scan_axis: {scan_axis}",
+        f"# scan_x_key: {scan_x_key}",
+        f"# vmin: {float(vmin):g}",
+        f"# vmax: {float(vmax):g}",
+        f"# n_points: {int(n_points)}",
+        f"# fixed_kappa: {','.join(f'{float(k):g}' for k in fixed_kappa)}",
+        "#",
+        "\t".join(columns),
+    ]
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body_lines = ["\t".join(f"{float(x):.10g}" for x in row) for row in rows]
+    path.write_text("\n".join(header_lines) + "\n" + "\n".join(body_lines) + "\n", encoding="utf-8")
+    return path
+
+
+def _load_scan_txt(path: Path) -> Dict[str, Any]:
+    comments: Dict[str, str] = {}
+    table_lines: list[str] = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            payload = line[1:].strip()
+            if ":" in payload:
+                key, _, value = payload.partition(":")
+                comments[key.strip()] = value.strip()
+            continue
+        table_lines.append(line)
+
+    if len(table_lines) < 2:
+        raise ValueError(f"No data table in {path}")
+
+    header = table_lines[0].split("\t")
+    if len(header) == 1:
+        header = table_lines[0].split()
+    rows = np.asarray(
+        [[float(x) for x in (ln.split("\t") if "\t" in ln else ln.split())] for ln in table_lines[1:]],
+        dtype=float,
+    )
+
+    out: Dict[str, Any] = {}
+    for key in (
+        "process",
+        "scan_axis",
+        "scan_x_key",
+    ):
+        if key in comments:
+            out[key] = comments[key]
+    for key in ("energy_tev", "vmin", "vmax"):
+        if key in comments:
+            out[key] = float(comments[key])
+    if "n_points" in comments:
+        out["n_points"] = int(comments["n_points"])
+    if "fixed_kappa" in comments:
+        out["fixed_kappa"] = [float(x) for x in comments["fixed_kappa"].split(",")]
+
+    for j, col in enumerate(header):
+        out[col] = rows[:, j]
+    return out
+
+
+def _load_scan_json(path: Path) -> Dict[str, Any]:
+    """Legacy JSON scan files (v1 / v2)."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
     version = payload.get("version", 1)
 
     if version == 2:
@@ -119,48 +222,3 @@ def load_scan_results(path: Path) -> Dict[str, Any]:
             if key.startswith("enhancement_"):
                 out[key.replace("enhancement_", "sigma_heft_over_sm_")] = np.asarray(values, dtype=float)
     return out
-
-
-def _arrays_to_lists(data: Mapping[str, np.ndarray]) -> Dict[str, list]:
-    return {key: np.asarray(values, dtype=float).tolist() for key, values in data.items()}
-
-
-def _slim_scan_payload(
-    data: ArrayDict,
-    scan_x_key: str,
-) -> Dict[str, np.ndarray]:
-    slim: Dict[str, np.ndarray] = {scan_x_key: data[scan_x_key]}
-    for key in SCAN_VALUE_KEYS:
-        slim[key] = data[key]
-    return slim
-
-
-def _write_scan_file(
-    path: Path,
-    *,
-    analysis: VHHAnalysis,
-    scan_axis: str,
-    scan_x_key: str,
-    vmin: float,
-    vmax: float,
-    n_points: int,
-    fixed_kappa: Tuple[float, ...],
-    data: ArrayDict,
-) -> Path:
-    slim = _slim_scan_payload(data, scan_x_key)
-    payload: Dict[str, Any] = {
-        "version": 2,
-        "process": analysis.process,
-        "energy_tev": float(analysis.energy_tev),
-        "scan_axis": scan_axis,
-        "scan_x_key": scan_x_key,
-        "vmin": float(vmin),
-        "vmax": float(vmax),
-        "n_points": int(n_points),
-        "fixed_kappa": [float(k) for k in fixed_kappa],
-        **_arrays_to_lists(slim),
-    }
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    return path

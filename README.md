@@ -135,7 +135,7 @@ scan_data, path = scan_and_save(
     fixed_kappa=kappa,
     n_points=400,
     uncertainties=True,   # bands for plotting (stays in memory)
-    save=True,            # write Results/Points/...json
+    save=True,            # write Results/Points/...txt
 )
 ```
 
@@ -168,24 +168,35 @@ from vhh_predict import all_channels_latex, tables_dir
 
 ```
 Results/
-├── Points/    # κ-scan JSON from scan_and_save()
+├── Points/    # κ-scan tables from scan_and_save() (.txt)
 ├── Plots/     # figures from the notebook
 └── Tables/    # LaTeX tables (wilson_tables.tex)
 ```
 
-### Scan JSON (`Results/Points/`)
+### Scan files (`Results/Points/`)
 
-Filename: `{Process}_{energy}TeV_{axis}.json`  
-Example: `ZHH_14.0TeV_kappa_t.json`
+Filename: `{Process}_{energy}TeV_{axis}.txt`  
+Example: `ZHH_14.0TeV_kappa_t.txt`
 
-| Field | Meaning |
-|-------|---------|
-| `kappa_*` | scanned Wilson coefficient grid |
+Plain text: a short `#` comment header (process, energy, scan range, fixed κ) followed by a tab-separated table:
+
+```
+# process: ZHH
+# energy_tev: 14
+# scan_axis: kappa_t
+...
+kappa_t	sigma_lo	sigma_nnlo	k	sigma_heft_over_sm_lo	sigma_heft_over_sm_nnlo
+0.85	...
+```
+
+| Column | Meaning |
+|--------|---------|
+| `kappa_*` | scanned Wilson coefficient |
 | `sigma_lo`, `sigma_nnlo` | HEFT cross sections [fb] |
 | `k` | $\sigma_{\mathrm{NNLO}}/\sigma_{\mathrm{LO}}$ |
 | `sigma_heft_over_sm_lo`, `sigma_heft_over_sm_nnlo` | $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ |
 
-Reload: `load_scan_results(path)`. Uncertainty bands are **not** stored in the JSON; pass `uncertainties=True` to `scan()` / `scan_and_save()` when you need them for plots.
+Reload in Python: `load_scan_results(path)`. Legacy `.json` scans still load. Uncertainty bands are not saved; pass `uncertainties=True` to `scan_and_save()` when plotting.
 
 ---
 
@@ -209,7 +220,7 @@ VHH-NNLO/
 |-----------------|------|
 | `pdf_alpha_s_covariance.json` | Central $A_i$, PDF/$\alpha_s$ deltas, covariance |
 | `scale_coefficients.json` | Refitted $A_i$ at seven scale points |
-| `Simulation/*.out` | MadGraph central $\sigma$ for validation |
+| `Simulation/*.out` | Fortran central $\sigma$ for validation |
 | `*_analysis_A.txt` | Human-readable reference only (not read at runtime) |
 
 ---

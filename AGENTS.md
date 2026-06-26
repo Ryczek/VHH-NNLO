@@ -100,10 +100,10 @@ scan_data, path = scan_and_save(
 
 ### Scan I/O
 
-- `scan_and_save()` — primary API: one scan + optional save to `Results/Points/{Process}_{energy}TeV_{axis}.json`
-- Saved JSON (v2): κ grid + `sigma_lo`, `sigma_nnlo`, `k`, `sigma_heft_over_sm_lo`, `sigma_heft_over_sm_nnlo` (no uncertainty columns)
+- `scan_and_save()` — primary API: one scan + optional save to `Results/Points/{Process}_{energy}TeV_{axis}.txt`
+- Saved file: `#` comment header + tab-separated table (`kappa_*`, `sigma_lo`, `sigma_nnlo`, `k`, `sigma_heft_over_sm_*`)
 - `scan(..., uncertainties=True)` adds PDF/scale bands **in memory** for plotting
-- `load_scan_results()` supports v1 and v2 formats
+- `load_scan_results()` reads `.txt`; legacy `.json` (v1/v2) still supported
 
 ### Plot helpers (`vhh_predict/plots.py`)
 
