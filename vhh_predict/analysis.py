@@ -87,7 +87,7 @@ def process_simulation_dir(
     *,
     data_root_override: Optional[Path] = None,
 ) -> Path:
-    """Bundled MadGraph central values: ``data/{Process}/{energy}/Simulation/``."""
+    """Bundled simulation central values: ``data/{Process}/{energy}/Simulation/``."""
     return process_data_dir(process, energy_tev, root=data_root_override) / "Simulation"
 
 

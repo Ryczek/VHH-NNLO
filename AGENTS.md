@@ -23,11 +23,12 @@ VHH-NNLO/
 │   ├── core.py               # predict(), scan(), format_prediction(), sm_enhancement()
 │   ├── scan_io.py            # scan_and_save(), load_scan_results(), scan_points_path()
 │   ├── tables.py             # Wilson-interval benchmark tables + LaTeX
-│   ├── simulation.py         # MadGraph .out comparison helpers
+│   ├── simulation.py         # bundled simulation .out comparison helpers
 │   ├── out_parser.py
 │   ├── monomials.py
 │   ├── covariance_matrices.py
 │   ├── scale_coefficients.py
+│   ├── plot_style.py           # PlotStyle dataclass (typography, inset, legend)
 │   └── plots.py
 ├── data/
 │   └── {Process}/{13_6TeV|14_0TeV}/
@@ -61,7 +62,7 @@ Path resolution: `package_root()` = parent of `vhh_predict/` (repo root in dev).
 
 SM: all κ = 1 (`sm_kappa(process)`).
 
-### Wilson-coefficient intervals (benchmark tables, §6)
+### Wilson-coefficient intervals (benchmark tables, §5 notebook section)
 
 | Coefficient | Min | SM | Max |
 |-------------|-----|-----|-----|
@@ -74,7 +75,7 @@ ZHH tables: **two groups** — `(kappa_lambda, kappa_t)` and `(kappa_z, kappa_2z
 
 ### Simulation comparison
 
-`data/{Process}/{energy}/Simulation/*.out` — MadGraph central values only.
+`data/{Process}/{energy}/Simulation/*.out` — bundled simulation central values.
 
 - `COMPARE_SIMULATION` in notebook: **§2 spot check only** (not on scan plots)
 - `load_simulation_central()`, `collect_simulation_scan_points()` in `simulation.py`
@@ -100,12 +101,34 @@ scan_data, path = scan_and_save(
 
 ### Scan I/O
 
-- `scan_and_save()` — primary API: one scan + optional save to `Results/Points/{Process}_{energy}TeV_{axis}.txt`
+- `scan_and_save()` — one axis → optional `Results/Points/{Process}_{energy}TeV_{axis}.txt`
+- `scan_axes_and_save()` — any set of axes; one file per axis (windows default to `WILSON_INTERVALS`)
 - Saved file: `#` comment header + tab-separated table (`kappa_*`, `sigma_lo`, `sigma_nnlo`, `k`, `sigma_heft_over_sm_*`)
 - `scan(..., uncertainties=True)` adds PDF/scale bands **in memory** for plotting
 - `load_scan_results()` reads `.txt`; legacy `.json` (v1/v2) still supported
 
+### Plot styling (`vhh_predict/plot_style.py`)
+
+Notebook §1 exposes `SIGMA_INSET`, `LEGEND_LOC`, `INSET_LOC` (via `plot_style_with_layout`).
+Lower two-panel subplots (K, σ_HEFT/σ_SM) never show a legend.
+
+`PlotStyle` dataclass bundles typography, figure size, legend corner, inset corner,
+x-axis padding, and save DPI. Pass `style=PLOT_STYLE` to any plot function.
+
+| Field | Default | Role |
+|-------|---------|------|
+| `legend_h`, `legend_v` | `right`, `lower` | Legend corner |
+| `inset_h`, `inset_v` | `left`, `upper` | Inset corner (`inset_h=None` hides inset) |
+| `inset_x_fraction` | `0.01` | Auto inset zoom = fraction of x-span |
+| `inset_scale` | `2.0` | Inset box size multiplier |
+| `x_pad_frac` | `0.04` | Margin on plot x-limits |
+| `save_dpi` | `300` | PNG resolution |
+
+Helpers: `default_plot_title(process, energy_tev)`, `scan_plot_filename_stem(...)`.
+
 ### Plot helpers (`vhh_predict/plots.py`)
+
+All accept optional `style=PlotStyle(...)`, `xmin`/`xmax` (scan window), `sigma_inset`, `sigma_inset_xlim`.
 
 | Function | Use |
 |----------|-----|
@@ -121,18 +144,17 @@ Enhancement plots read `sigma_heft_over_sm_*` from scan data.
 
 ## Notebook sections (`vhh_prediction.ipynb`)
 
-1. **Configuration** — `PROCESS`, `ENERGY_TEV`, `KAPPA`, `SAVE_SCAN_POINTS`, `SAVE_PLOTS`, `SIGMA_INSET`, `COMPARE_SIMULATION`
-2. **Spot check** — `format_prediction()` (σ, K, σ_HEFT/σ_SM; sim on σ lines if enabled)
-3. **Scan** — single `scan_and_save(..., uncertainties=True)` → `scan_data` (+ optional Points JSON)
-4. **Single-panel plots** — σ_NNLO, σ_LO, K, σ_HEFT/σ_SM LO, σ_HEFT/σ_SM NNLO
-5. **Two-panel plots** — σ_NNLO+K; σ_NNLO+σ_HEFT/σ_SM NNLO
-6. **Wilson tables** — all channels + LaTeX → `Results/Tables/wilson_tables.tex`
+1. **Configuration** — `PROCESS`, `ENERGY_TEV`, output flags, `SIGMA_INSET` (`PLOT_STYLE = DEFAULT_PLOT_STYLE`)
+2. **Spot check** — `spot_check_table()` / `spot_check_caption()` (HEFT table + optional simulation columns)
+3. **Scan and plots** — `scan_vmin`/`scan_vmax`, `scan_and_save(..., uncertainties=True)`, then both two-panel figures in the same cell
+4. **Batch scan** — `scan_axes_and_save(BATCH_SCAN_AXES, ...)` → one `.txt` per axis (no plots)
+5. **Wilson-coefficient benchmark tables** — all channels + LaTeX → `Results/Tables/wilson_tables.tex`
 
-Plot cells reuse `scan_data` from §3 (no second scan, no sim overlay on scans).
+§3 scan and plots run together (no second scan, no sim overlay on scans).
 
 ## Development notes
 
-- Run notebook from **repo root**; setup cell adds `.` to `sys.path`.
+- Run notebook from **repo root**; the Setup cell verifies `data/` and `vhh_predict/` exist under the cwd (raises with a clear message otherwise) and adds `.` to `sys.path`.
 - Install: `pip install -e ".[notebook]"` (see `pyproject.toml`).
 - `requirements.txt` is a flat alternative to the pyproject extras.
 - Do not commit generated `Results/Plots/*.png`, `Results/Tables/*.tex` unless intentional.

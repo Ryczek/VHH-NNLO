@@ -1,20 +1,21 @@
-"""Publication-style scan plots (adapted from sigma_kfactor_workbench)."""
+"""Publication-style scan plots."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Optional, Sequence
+from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-CB_PDF_FILL = "#0066CC"
-CB_SCALE_EDGE = "#FF0000"
-CB_SCALE_HATCH = "\\\\\\"
-CB_CURVE = "#222222"
-INSET_LEGEND_SCALE = 1.5
-AXIS_LABEL_FONTSIZE = 13
-TICK_LABEL_FONTSIZE = 11
+from .plot_style import (
+    CB_CURVE,
+    CB_PDF_FILL,
+    CB_SCALE_EDGE,
+    CB_SCALE_HATCH,
+    DEFAULT_PLOT_STYLE,
+    PlotStyle,
+)
 
 X_LABELS = {
     "kappa_lambda": r"$\kappa_{\lambda}$",
@@ -26,16 +27,11 @@ X_LABELS = {
 }
 
 
-def _set_axis_labels(ax, *, xlabel: Optional[str] = None, ylabel: Optional[str] = None) -> None:
-    if xlabel is not None:
-        ax.set_xlabel(xlabel, fontsize=AXIS_LABEL_FONTSIZE)
-    if ylabel is not None:
-        ax.set_ylabel(ylabel, fontsize=AXIS_LABEL_FONTSIZE)
-    ax.tick_params(axis="both", which="major", labelsize=TICK_LABEL_FONTSIZE)
+def _style(style: Optional[PlotStyle]) -> PlotStyle:
+    return style if style is not None else DEFAULT_PLOT_STYLE
 
 
 def _uncertainty_band_zorders(pdf, inf, sup) -> tuple[int, int]:
-    """Return (pdf_zorder, scale_zorder); draw the wider band on top."""
     pdf_mag = float(np.mean(np.asarray(pdf, dtype=float)))
     scale_mag = float(
         np.mean(np.maximum(np.asarray(inf, dtype=float), np.asarray(sup, dtype=float)))
@@ -45,24 +41,10 @@ def _uncertainty_band_zorders(pdf, inf, sup) -> tuple[int, int]:
     return 3, 2
 
 
-def _fill_uncertainty_bands(
-    ax,
-    x,
-    y,
-    pdf,
-    inf,
-    sup,
-    *,
-    pdf_label: str = "PDF+$\\alpha_s$",
-    scale_label: str = "scale envelope",
-) -> None:
-    z_pdf, z_scale = _uncertainty_band_zorders(pdf, inf, sup)
-    _fill_pdf(ax, x, y, pdf, label=pdf_label, zorder=z_pdf)
-    _fill_scale(ax, x, y, inf, sup, label=scale_label, zorder=z_scale)
-
-
 def _fill_pdf(ax, x, y, delta, *, label: str, zorder: int = 2) -> None:
-    ax.fill_between(x, y - delta, y + delta, color=CB_PDF_FILL, alpha=0.35, linewidth=0, label=label, zorder=zorder)
+    ax.fill_between(
+        x, y - delta, y + delta, color=CB_PDF_FILL, alpha=0.35, linewidth=0, label=label, zorder=zorder
+    )
 
 
 def _fill_scale(ax, x, y, lo, hi, *, label: str, zorder: int = 3) -> None:
@@ -80,6 +62,22 @@ def _fill_scale(ax, x, y, lo, hi, *, label: str, zorder: int = 3) -> None:
             label=label,
             zorder=zorder,
         )
+
+
+def _fill_uncertainty_bands(
+    ax,
+    x,
+    y,
+    pdf,
+    inf,
+    sup,
+    *,
+    pdf_label: str = "PDF+$\\alpha_s$",
+    scale_label: str = "scale envelope",
+) -> None:
+    z_pdf, z_scale = _uncertainty_band_zorders(pdf, inf, sup)
+    _fill_pdf(ax, x, y, pdf, label=pdf_label, zorder=z_pdf)
+    _fill_scale(ax, x, y, inf, sup, label=scale_label, zorder=z_scale)
 
 
 def _k_ylim_from_scan(scan: Dict[str, np.ndarray], *, show_uncertainty: bool) -> tuple[float, float]:
@@ -107,13 +105,23 @@ def _infer_x_key(scan: Dict[str, np.ndarray]) -> str:
     raise KeyError("Could not infer scan x-axis key")
 
 
-def _overlay_simulation(
-    ax,
-    x: np.ndarray,
-    y: np.ndarray,
+def _scan_xlim(
+    scan: Dict[str, np.ndarray],
+    x_key: str,
     *,
-    label: str = "simulation",
-) -> None:
+    xmin: Optional[float],
+    xmax: Optional[float],
+) -> tuple[float, float]:
+    x = np.asarray(scan[x_key], dtype=float)
+    return (float(xmin) if xmin is not None else float(np.min(x)), float(xmax) if xmax is not None else float(np.max(x)))
+
+
+def _apply_scan_xlim(ax, scan: Dict[str, np.ndarray], x_key: str, style: PlotStyle, *, xmin, xmax) -> None:
+    lo, hi = _scan_xlim(scan, x_key, xmin=xmin, xmax=xmax)
+    style.apply_xlim(ax, lo, hi)
+
+
+def _overlay_simulation(ax, x: np.ndarray, y: np.ndarray, *, label: str = "simulation") -> None:
     mask = np.isfinite(x) & np.isfinite(y)
     if not np.any(mask):
         return
@@ -130,6 +138,19 @@ def _overlay_simulation(
     )
 
 
+def _inset_connection_corners(inset_h: str, inset_v: str) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Data-corner of zoom box and corresponding inset-axes corner for connector lines."""
+    if inset_h == "left" and inset_v == "upper":
+        return (0.0, 1.0), (1.0, 0.0)
+    if inset_h == "left" and inset_v == "lower":
+        return (0.0, 0.0), (1.0, 1.0)
+    if inset_h == "right" and inset_v == "upper":
+        return (1.0, 1.0), (0.0, 0.0)
+    if inset_h == "right" and inset_v == "lower":
+        return (1.0, 0.0), (0.0, 1.0)
+    return (0.0, 1.0), (1.0, 0.0)
+
+
 def _add_sigma_inset(
     ax,
     x,
@@ -138,49 +159,45 @@ def _add_sigma_inset(
     inf,
     sup,
     *,
-    legend=None,
+    style: PlotStyle,
     xlim: Optional[tuple[float, float]] = None,
-    x_fraction: float = 0.01,
 ) -> None:
     from matplotlib.patches import ConnectionPatch, Rectangle
     from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+    if style.inset_h is None:
+        return
 
     x = np.asarray(x, dtype=float)
     x_min, x_max = float(np.min(x)), float(np.max(x))
     span = max(x_max - x_min, 1e-12)
     if xlim is None:
-        xlo, xhi = x_min, x_min + float(x_fraction) * span
+        xlo, xhi = x_min, x_min + float(style.inset_x_fraction) * span
     else:
         xlo, xhi = xlim
+
     x_plot = np.linspace(xlo, xhi, 120)
     sm = np.interp(x_plot, x, sigma)
     pdf_plot = np.interp(x_plot, x, pdfas)
     inf_plot = np.interp(x_plot, x, inf)
     sup_plot = np.interp(x_plot, x, sup)
 
-    fig = ax.figure
-    if legend is not None:
-        fig.canvas.draw()
-        leg_bbox = legend.get_window_extent().transformed(ax.transAxes.inverted())
-        gap = 0.015
-        w = float(leg_bbox.width) * INSET_LEGEND_SCALE
-        h = float(leg_bbox.height) * INSET_LEGEND_SCALE
-        x_anchor = float(np.clip(leg_bbox.x0, 0.0, 1.0 - w))
-        y_anchor = float(np.clip(leg_bbox.y0 - h - gap, 0.02, 1.0 - h))
-        axins = inset_axes(
-            ax,
-            width="100%",
-            height="100%",
-            bbox_to_anchor=(x_anchor, y_anchor, w, h),
-            bbox_transform=ax.transAxes,
-            loc="lower left",
-            borderpad=0,
-        )
-    else:
-        axins = inset_axes(ax, width="28%", height="22%", loc="upper right", borderpad=0.8)
+    bbox = style.inset_bbox()
+    axins = inset_axes(
+        ax,
+        width="100%",
+        height="100%",
+        bbox_to_anchor=bbox,
+        bbox_transform=ax.transAxes,
+        loc="lower left",
+        borderpad=0,
+    )
 
-    axins.plot(x_plot, sm, color=CB_CURVE, lw=1.4)
-    _fill_uncertainty_bands(axins, x_plot, sm, pdf_plot, inf_plot, sup_plot, pdf_label="_inset", scale_label="_inset")
+    lw_inset = max(style.line_width * 0.65, 1.2)
+    axins.plot(x_plot, sm, color=CB_CURVE, lw=lw_inset)
+    _fill_uncertainty_bands(
+        axins, x_plot, sm, pdf_plot, inf_plot, sup_plot, pdf_label="_inset", scale_label="_inset"
+    )
     ylo = float(np.min(sm - pdf_plot - inf_plot))
     yhi = float(np.max(sm + pdf_plot + sup_plot))
     pad = 0.08 * max(yhi - ylo, 1e-6)
@@ -189,19 +206,100 @@ def _add_sigma_inset(
     axins.set_ylim(ylo_z, yhi_z)
     axins.set_xticks([])
     axins.set_yticks([])
-    axins.grid(alpha=0.2)
+    axins.tick_params(labelsize=max(style.tick_label_fontsize - 4, 8))
+    axins.grid(alpha=style.grid_alpha * 0.8)
 
     line_kw = dict(linestyle="--", color="0.45", lw=0.8, clip_on=False)
-    ax.add_patch(Rectangle((xlo, ylo_z), xhi - xlo, yhi_z - ylo_z, fill=False, transform=ax.transData, **line_kw))
-    for x_corner, inset_x in ((xlo, 0.0), (xhi, 1.0)):
+    ax.add_patch(
+        Rectangle((xlo, ylo_z), xhi - xlo, yhi_z - ylo_z, fill=False, transform=ax.transData, **line_kw)
+    )
+    fig = ax.figure
+    data_corner, inset_corner = _inset_connection_corners(style.inset_h, style.inset_v)
+    for x_corner, inset_x in ((xlo, inset_corner[0]), (xhi, inset_corner[0])):
+        y_data = yhi_z if data_corner[1] > 0.5 else ylo_z
+        y_inset = inset_corner[1]
         fig.add_artist(
             ConnectionPatch(
-                xyA=(x_corner, yhi_z),
+                xyA=(x_corner, y_data),
                 coordsA=ax.transData,
-                xyB=(inset_x, 0.0),
+                xyB=(inset_x, y_inset),
                 coordsB=axins.transAxes,
                 **line_kw,
             )
+        )
+
+
+def _make_two_panel_figure(style: PlotStyle):
+    return plt.subplots(
+        2,
+        1,
+        figsize=style.figsize_two_panel,
+        sharex=True,
+        gridspec_kw={"height_ratios": list(style.panel_height_ratios)},
+    )
+
+
+def _finalize_two_panel(fig, style: PlotStyle, *, title: Optional[str]) -> None:
+    if title:
+        style.apply_suptitle(fig, title)
+    else:
+        fig.subplots_adjust(top=0.98)
+    style.finalize_figure(fig, two_panel=True)
+
+
+def _clear_legend(ax) -> None:
+    leg = ax.get_legend()
+    if leg is not None:
+        leg.remove()
+
+
+def _plot_sigma_panel(
+    ax,
+    scan: Dict[str, np.ndarray],
+    x,
+    *,
+    style: PlotStyle,
+    nnlo_label: str,
+    sigma_inset: bool,
+    inset_xlim: Optional[tuple[float, float]],
+    sim_scan: Optional[Dict[str, np.ndarray]],
+    xmin: Optional[float],
+    xmax: Optional[float],
+    x_key: str,
+) -> None:
+    ax.plot(
+        x,
+        scan["sigma_nnlo"],
+        color=CB_CURVE,
+        lw=style.line_width,
+        label=rf"$\sigma_{{\mathrm{{{nnlo_label}}}}}$",
+        zorder=4,
+    )
+    if "sigma_nnlo_pdfas" in scan:
+        _fill_uncertainty_bands(
+            ax,
+            x,
+            scan["sigma_nnlo"],
+            scan["sigma_nnlo_pdfas"],
+            scan["sigma_nnlo_inf"],
+            scan["sigma_nnlo_sup"],
+        )
+    if sim_scan is not None and len(sim_scan.get("x", [])):
+        _overlay_simulation(ax, sim_scan["x"], sim_scan["sigma_nnlo"])
+    style.set_axis_labels(ax, ylabel=rf"$\sigma_{{\mathrm{{{nnlo_label}}}}}$ [fb]")
+    ax.grid(alpha=style.grid_alpha)
+    style.make_legend(ax)
+    _apply_scan_xlim(ax, scan, x_key, style, xmin=xmin, xmax=xmax)
+    if sigma_inset and "sigma_nnlo_pdfas" in scan:
+        _add_sigma_inset(
+            ax,
+            x,
+            scan["sigma_nnlo"],
+            scan["sigma_nnlo_pdfas"],
+            scan["sigma_nnlo_inf"],
+            scan["sigma_nnlo_sup"],
+            style=style,
+            xlim=inset_xlim,
         )
 
 
@@ -216,45 +314,37 @@ def plot_sigma_only(
     sigma_inset: bool = True,
     sigma_inset_xlim: Optional[tuple[float, float]] = None,
     sim_scan: Optional[Dict[str, np.ndarray]] = None,
+    xmin: Optional[float] = None,
+    xmax: Optional[float] = None,
+    style: Optional[PlotStyle] = None,
     save: bool = True,
 ) -> plt.Figure:
     """Single-panel $\\sigma_{\\mathrm{NNLO}}$ scan with uncertainty bands."""
+    st = _style(style)
     key = x_key or _infer_x_key(scan)
     x = scan[key]
     x_label = x_label or X_LABELS.get(key, key)
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4.8), constrained_layout=True)
+    fig, ax = plt.subplots(1, 1, figsize=st.figsize_single)
     if title:
-        ax.set_title(title)
+        st.apply_ax_title(ax, title)
 
-    ax.plot(x, scan["sigma_nnlo"], color=CB_CURVE, lw=2, label=rf"$\sigma_{{\mathrm{{{nnlo_label}}}}}$", zorder=4)
-    _fill_uncertainty_bands(
+    _plot_sigma_panel(
         ax,
+        scan,
         x,
-        scan["sigma_nnlo"],
-        scan["sigma_nnlo_pdfas"],
-        scan["sigma_nnlo_inf"],
-        scan["sigma_nnlo_sup"],
+        style=st,
+        nnlo_label=nnlo_label,
+        sigma_inset=sigma_inset,
+        inset_xlim=sigma_inset_xlim,
+        sim_scan=sim_scan,
+        xmin=xmin,
+        xmax=xmax,
+        x_key=key,
     )
-    if sim_scan is not None and len(sim_scan.get("x", [])):
-        _overlay_simulation(ax, sim_scan["x"], sim_scan["sigma_nnlo"])
-    _set_axis_labels(ax, xlabel=x_label, ylabel=rf"$\sigma_{{\mathrm{{{nnlo_label}}}}}$ [fb]")
-    ax.grid(alpha=0.25)
-    legend = ax.legend(loc="best")
-    if sigma_inset:
-        _add_sigma_inset(
-            ax,
-            x,
-            scan["sigma_nnlo"],
-            scan["sigma_nnlo_pdfas"],
-            scan["sigma_nnlo_inf"],
-            scan["sigma_nnlo_sup"],
-            legend=legend,
-            xlim=sigma_inset_xlim,
-        )
-
-    if output and save:
-        fig.savefig(output, dpi=200, bbox_inches="tight")
+    st.set_axis_labels(ax, xlabel=x_label)
+    fig.tight_layout()
+    st.save_figure(fig, output, save=save)
     return fig
 
 
@@ -265,18 +355,22 @@ def plot_sigma_lo_only(
     title: Optional[str] = None,
     x_key: Optional[str] = None,
     x_label: Optional[str] = None,
+    xmin: Optional[float] = None,
+    xmax: Optional[float] = None,
+    style: Optional[PlotStyle] = None,
     save: bool = True,
 ) -> plt.Figure:
     """Single-panel $\\sigma_{\\mathrm{LO}}$ scan with uncertainty bands."""
+    st = _style(style)
     key = x_key or _infer_x_key(scan)
     x = scan[key]
     x_label = x_label or X_LABELS.get(key, key)
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4.8), constrained_layout=True)
+    fig, ax = plt.subplots(1, 1, figsize=st.figsize_single)
     if title:
-        ax.set_title(title)
+        st.apply_ax_title(ax, title)
 
-    ax.plot(x, scan["sigma_lo"], color=CB_CURVE, lw=2, label=r"$\sigma_{\mathrm{LO}}$", zorder=4)
+    ax.plot(x, scan["sigma_lo"], color=CB_CURVE, lw=st.line_width, label=r"$\sigma_{\mathrm{LO}}$", zorder=4)
     if "sigma_lo_pdfas" in scan:
         _fill_uncertainty_bands(
             ax,
@@ -286,12 +380,12 @@ def plot_sigma_lo_only(
             scan["sigma_lo_inf"],
             scan["sigma_lo_sup"],
         )
-    _set_axis_labels(ax, xlabel=x_label, ylabel=r"$\sigma_{\mathrm{LO}}$ [fb]")
-    ax.legend(loc="best")
-    ax.grid(alpha=0.25)
-
-    if output and save:
-        fig.savefig(output, dpi=200, bbox_inches="tight")
+    st.set_axis_labels(ax, xlabel=x_label, ylabel=r"$\sigma_{\mathrm{LO}}$ [fb]")
+    st.make_legend(ax)
+    ax.grid(alpha=st.grid_alpha)
+    _apply_scan_xlim(ax, scan, key, st, xmin=xmin, xmax=xmax)
+    fig.tight_layout()
+    st.save_figure(fig, output, save=save)
     return fig
 
 
@@ -306,58 +400,48 @@ def plot_sigma_nnlo_and_enhancement_nnlo(
     sigma_inset: bool = True,
     sigma_inset_xlim: Optional[tuple[float, float]] = None,
     show_enhancement_uncertainty: bool = False,
+    xmin: Optional[float] = None,
+    xmax: Optional[float] = None,
+    style: Optional[PlotStyle] = None,
     save: bool = True,
 ) -> plt.Figure:
     """Two panels: $\\sigma_{\\mathrm{NNLO}}$ and $\\sigma_{\\mathrm{HEFT}}/\\sigma_{\\mathrm{SM}}$ at NNLO."""
+    st = _style(style)
     key = x_key or _infer_x_key(scan)
     x = scan[key]
     x_label = x_label or X_LABELS.get(key, key)
     ykey, pdfkey, infkey, supkey, order_label = _enhancement_series(scan, nnlo_label, nnlo_label)
 
-    fig, (ax0, ax1) = plt.subplots(
-        2, 1, figsize=(8, 7), sharex=True, constrained_layout=True, gridspec_kw={"height_ratios": [2.6, 1.0]}
+    fig, (ax0, ax1) = _make_two_panel_figure(st)
+    _plot_sigma_panel(
+        ax0,
+        scan,
+        x,
+        style=st,
+        nnlo_label=nnlo_label,
+        sigma_inset=sigma_inset,
+        inset_xlim=sigma_inset_xlim,
+        sim_scan=None,
+        xmin=xmin,
+        xmax=xmax,
+        x_key=key,
     )
-    if title:
-        fig.suptitle(title)
-
-    ax0.plot(x, scan["sigma_nnlo"], color=CB_CURVE, lw=2, label=rf"$\sigma_{{\mathrm{{{nnlo_label}}}}}$", zorder=4)
-    if "sigma_nnlo_pdfas" in scan:
-        _fill_uncertainty_bands(
-            ax0,
-            x,
-            scan["sigma_nnlo"],
-            scan["sigma_nnlo_pdfas"],
-            scan["sigma_nnlo_inf"],
-            scan["sigma_nnlo_sup"],
-        )
-    _set_axis_labels(ax0, ylabel=rf"$\sigma_{{\mathrm{{{nnlo_label}}}}}$ [fb]")
-    ax0.grid(alpha=0.25)
-    legend = ax0.legend(loc="best")
-    if sigma_inset and "sigma_nnlo_pdfas" in scan:
-        _add_sigma_inset(
-            ax0,
-            x,
-            scan["sigma_nnlo"],
-            scan["sigma_nnlo_pdfas"],
-            scan["sigma_nnlo_inf"],
-            scan["sigma_nnlo_sup"],
-            legend=legend,
-            xlim=sigma_inset_xlim,
-        )
 
     y = scan[ykey]
     ax1.axhline(1.0, color="0.55", ls=":", lw=1.0, zorder=1)
-    ax1.plot(
-        x,
-        y,
-        color=CB_CURVE,
-        lw=2,
-        label=rf"$\sigma_{{\mathrm{{{order_label}}}}}/\sigma_{{\mathrm{{{order_label}}}}}^{{\mathrm{{SM}}}}$",
-        zorder=4,
-    )
+    ax1.plot(x, y, color=CB_CURVE, lw=st.line_width, zorder=4)
     if show_enhancement_uncertainty and pdfkey in scan:
-        _fill_uncertainty_bands(ax1, x, y, scan[pdfkey], scan[infkey], scan[supkey])
-    _set_axis_labels(
+        _fill_uncertainty_bands(
+            ax1,
+            x,
+            y,
+            scan[pdfkey],
+            scan[infkey],
+            scan[supkey],
+            pdf_label="_nolegend_",
+            scale_label="_nolegend_",
+        )
+    st.set_axis_labels(
         ax1,
         xlabel=x_label,
         ylabel=rf"$\sigma_{{\mathrm{{{order_label}}}}}/\sigma_{{\mathrm{{{order_label}}}}}^{{\mathrm{{SM}}}}$",
@@ -367,11 +451,12 @@ def plot_sigma_nnlo_and_enhancement_nnlo(
     else:
         pad = 0.06 * max(float(np.max(y) - np.min(y)), 1e-6)
         ax1.set_ylim(float(np.min(y)) - pad, float(np.max(y)) + pad)
-    ax1.legend(loc="best")
-    ax1.grid(alpha=0.25)
+    ax1.grid(alpha=st.grid_alpha)
+    _clear_legend(ax1)
+    _apply_scan_xlim(ax1, scan, key, st, xmin=xmin, xmax=xmax)
 
-    if output and save:
-        fig.savefig(output, dpi=200, bbox_inches="tight")
+    _finalize_two_panel(fig, st, title=title)
+    st.save_figure(fig, output, save=save)
     return fig
 
 
@@ -408,17 +493,21 @@ def plot_enhancement_only(
     x_label: Optional[str] = None,
     nnlo_label: str = "NNLO",
     show_uncertainty: bool = True,
+    xmin: Optional[float] = None,
+    xmax: Optional[float] = None,
+    style: Optional[PlotStyle] = None,
     save: bool = True,
 ) -> plt.Figure:
     """Single-panel $\\sigma_{\\mathrm{HEFT}}/\\sigma_{\\mathrm{SM}}$ scan at LO or NNLO."""
+    st = _style(style)
     key = x_key or _infer_x_key(scan)
     x = scan[key]
     x_label = x_label or X_LABELS.get(key, key)
     ykey, pdfkey, infkey, supkey, order_label = _enhancement_series(scan, order, nnlo_label)
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4.2), constrained_layout=True)
+    fig, ax = plt.subplots(1, 1, figsize=st.figsize_single)
     if title:
-        ax.set_title(title)
+        st.apply_ax_title(ax, title)
 
     y = scan[ykey]
     ax.axhline(1.0, color="0.55", ls=":", lw=1.0, zorder=1)
@@ -426,13 +515,13 @@ def plot_enhancement_only(
         x,
         y,
         color=CB_CURVE,
-        lw=2,
+        lw=st.line_width,
         label=rf"$\sigma_{{\mathrm{{{order_label}}}}}/\sigma_{{\mathrm{{{order_label}}}}}^{{\mathrm{{SM}}}}$",
         zorder=4,
     )
     if show_uncertainty and pdfkey in scan:
         _fill_uncertainty_bands(ax, x, y, scan[pdfkey], scan[infkey], scan[supkey])
-    _set_axis_labels(
+    st.set_axis_labels(
         ax,
         xlabel=x_label,
         ylabel=rf"$\sigma_{{\mathrm{{{order_label}}}}}/\sigma_{{\mathrm{{{order_label}}}}}^{{\mathrm{{SM}}}}$",
@@ -442,11 +531,11 @@ def plot_enhancement_only(
     else:
         pad = 0.06 * max(float(np.max(y) - np.min(y)), 1e-6)
         ax.set_ylim(float(np.min(y)) - pad, float(np.max(y)) + pad)
-    ax.legend(loc="best")
-    ax.grid(alpha=0.25)
-
-    if output and save:
-        fig.savefig(output, dpi=200, bbox_inches="tight")
+    st.make_legend(ax)
+    ax.grid(alpha=st.grid_alpha)
+    _apply_scan_xlim(ax, scan, key, st, xmin=xmin, xmax=xmax)
+    fig.tight_layout()
+    st.save_figure(fig, output, save=save)
     return fig
 
 
@@ -463,56 +552,45 @@ def plot_sigma_nnlo_and_kfactor(
     sigma_inset_xlim: Optional[tuple[float, float]] = None,
     sim_scan: Optional[Dict[str, np.ndarray]] = None,
     k_ylim: Optional[tuple[float, float]] = None,
+    xmin: Optional[float] = None,
+    xmax: Optional[float] = None,
+    style: Optional[PlotStyle] = None,
     save: bool = True,
 ) -> plt.Figure:
+    st = _style(style)
     key = x_key or _infer_x_key(scan)
     x = scan[key]
     x_label = x_label or X_LABELS.get(key, key)
 
-    fig, (ax0, ax1) = plt.subplots(
-        2, 1, figsize=(8, 7), sharex=True, constrained_layout=True, gridspec_kw={"height_ratios": [2.6, 1.0]}
-    )
-    if title:
-        fig.suptitle(title)
-
-    ax0.plot(x, scan["sigma_nnlo"], color=CB_CURVE, lw=2, label=rf"$\sigma_{{\mathrm{{{nnlo_label}}}}}$", zorder=4)
-    _fill_uncertainty_bands(
+    fig, (ax0, ax1) = _make_two_panel_figure(st)
+    _plot_sigma_panel(
         ax0,
+        scan,
         x,
-        scan["sigma_nnlo"],
-        scan["sigma_nnlo_pdfas"],
-        scan["sigma_nnlo_inf"],
-        scan["sigma_nnlo_sup"],
+        style=st,
+        nnlo_label=nnlo_label,
+        sigma_inset=sigma_inset,
+        inset_xlim=sigma_inset_xlim,
+        sim_scan=sim_scan,
+        xmin=xmin,
+        xmax=xmax,
+        x_key=key,
     )
-    if sim_scan is not None and len(sim_scan.get("x", [])):
-        _overlay_simulation(ax0, sim_scan["x"], sim_scan["sigma_nnlo"])
-    _set_axis_labels(ax0, ylabel=rf"$\sigma_{{\mathrm{{{nnlo_label}}}}}$ [fb]")
-    ax0.grid(alpha=0.25)
-    legend = ax0.legend(loc="best")
-    if sigma_inset:
-        _add_sigma_inset(
-            ax0,
-            x,
-            scan["sigma_nnlo"],
-            scan["sigma_nnlo_pdfas"],
-            scan["sigma_nnlo_inf"],
-            scan["sigma_nnlo_sup"],
-            legend=legend,
-            xlim=sigma_inset_xlim,
-        )
 
-    ax1.plot(x, scan["k"], color=CB_CURVE, lw=2, label=rf"$K=\sigma_{{\mathrm{{{nnlo_label}}}}}/\sigma_{{\mathrm{{LO}}}}$")
+    ax1.plot(x, scan["k"], color=CB_CURVE, lw=st.line_width, zorder=4)
     if show_k_uncertainty:
         _fill_uncertainty_bands(ax1, x, scan["k"], scan["k_pdfas"], scan["k_inf"], scan["k_sup"])
     if sim_scan is not None and len(sim_scan.get("x", [])):
         sim_k = sim_scan["sigma_nnlo"] / sim_scan["sigma_lo"]
         _overlay_simulation(ax1, sim_scan["x"], sim_k, label="simulation $K$")
-    _set_axis_labels(ax1, xlabel=x_label, ylabel=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
+    st.set_axis_labels(ax1, xlabel=x_label, ylabel=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
     ax1.set_ylim(*(k_ylim or _k_ylim_from_scan(scan, show_uncertainty=show_k_uncertainty)))
-    ax1.grid(alpha=0.25)
+    ax1.grid(alpha=st.grid_alpha)
+    _clear_legend(ax1)
+    _apply_scan_xlim(ax1, scan, key, st, xmin=xmin, xmax=xmax)
 
-    if output and save:
-        fig.savefig(output, dpi=200, bbox_inches="tight")
+    _finalize_two_panel(fig, st, title=title)
+    st.save_figure(fig, output, save=save)
     return fig
 
 
@@ -533,18 +611,22 @@ def plot_sm_enhancement(
     x_label: Optional[str] = None,
     nnlo_label: str = "NNLO",
     show_uncertainty: bool = True,
+    xmin: Optional[float] = None,
+    xmax: Optional[float] = None,
+    style: Optional[PlotStyle] = None,
     save: bool = True,
 ) -> plt.Figure:
     """Two-panel $\\sigma_{\\mathrm{HEFT}}/\\sigma_{\\mathrm{SM}}$ for LO and NNLO."""
+    st = _style(style)
     key = x_key or _infer_x_key(scan)
     x = scan[key]
     x_label = x_label or X_LABELS.get(key, key)
 
     fig, (ax0, ax1) = plt.subplots(
-        2, 1, figsize=(8, 7), sharex=True, constrained_layout=True, gridspec_kw={"height_ratios": [1.0, 1.0]}
+        2, 1, figsize=st.figsize_two_panel, sharex=True, gridspec_kw={"height_ratios": [1.0, 1.0]}
     )
     if title:
-        fig.suptitle(title)
+        st.apply_suptitle(fig, title)
 
     for ax, order in ((ax0, "LO"), (ax1, nnlo_label)):
         ykey, pdfkey, infkey, supkey, order_label = _enhancement_series(scan, order, nnlo_label)
@@ -554,24 +636,27 @@ def plot_sm_enhancement(
             x,
             y,
             color=CB_CURVE,
-            lw=2,
+            lw=st.line_width,
             label=rf"$\sigma_{{\mathrm{{{order_label}}}}}/\sigma_{{\mathrm{{{order_label}}}}}^{{\mathrm{{SM}}}}$",
             zorder=4,
         )
         if show_uncertainty and pdfkey in scan:
             _fill_uncertainty_bands(ax, x, y, scan[pdfkey], scan[infkey], scan[supkey])
-        _set_axis_labels(ax, ylabel=rf"$\sigma_{{\mathrm{{{order_label}}}}}/\sigma_{{\mathrm{{{order_label}}}}}^{{\mathrm{{SM}}}}$")
+        st.set_axis_labels(
+            ax, ylabel=rf"$\sigma_{{\mathrm{{{order_label}}}}}/\sigma_{{\mathrm{{{order_label}}}}}^{{\mathrm{{SM}}}}$"
+        )
         if show_uncertainty and pdfkey in scan:
             ax.set_ylim(_ylim_from_series(y, scan[pdfkey], scan[infkey], scan[supkey]))
         else:
             pad = 0.06 * max(float(np.max(y) - np.min(y)), 1e-6)
             ax.set_ylim(float(np.min(y)) - pad, float(np.max(y)) + pad)
-        ax.legend(loc="best")
-        ax.grid(alpha=0.25)
+        st.make_legend(ax)
+        ax.grid(alpha=st.grid_alpha)
 
-    _set_axis_labels(ax1, xlabel=x_label)
-    if output and save:
-        fig.savefig(output, dpi=200, bbox_inches="tight")
+    st.set_axis_labels(ax1, xlabel=x_label)
+    _apply_scan_xlim(ax1, scan, key, st, xmin=xmin, xmax=xmax)
+    st.finalize_figure(fig)
+    st.save_figure(fig, output, save=save)
     return fig
 
 
@@ -586,25 +671,30 @@ def plot_kfactor_only(
     show_uncertainty: bool = False,
     sim_scan: Optional[Dict[str, np.ndarray]] = None,
     k_ylim: Optional[tuple[float, float]] = None,
+    xmin: Optional[float] = None,
+    xmax: Optional[float] = None,
+    style: Optional[PlotStyle] = None,
     save: bool = True,
 ) -> plt.Figure:
+    st = _style(style)
     key = x_key or _infer_x_key(scan)
     x = np.asarray(scan[key], dtype=float)
     x_label = x_label or X_LABELS.get(key, key)
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4.2), constrained_layout=True)
+    fig, ax = plt.subplots(1, 1, figsize=st.figsize_single)
     if title:
-        ax.set_title(title)
-    ax.plot(x, scan["k"], color=CB_CURVE, lw=2, label=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
+        st.apply_ax_title(ax, title)
+    ax.plot(x, scan["k"], color=CB_CURVE, lw=st.line_width, label=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
     if show_uncertainty:
         _fill_uncertainty_bands(ax, x, scan["k"], scan["k_pdfas"], scan["k_inf"], scan["k_sup"])
     if sim_scan is not None and len(sim_scan.get("x", [])):
         sim_k = sim_scan["sigma_nnlo"] / sim_scan["sigma_lo"]
         _overlay_simulation(ax, sim_scan["x"], sim_k, label="simulation $K$")
-    ax.legend(loc="best")
-    _set_axis_labels(ax, xlabel=x_label, ylabel=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
+    st.make_legend(ax)
+    st.set_axis_labels(ax, xlabel=x_label, ylabel=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
     ax.set_ylim(*(k_ylim or _k_ylim_from_scan(scan, show_uncertainty=show_uncertainty)))
-    ax.grid(alpha=0.25)
-    if output and save:
-        fig.savefig(output, dpi=200, bbox_inches="tight")
+    ax.grid(alpha=st.grid_alpha)
+    _apply_scan_xlim(ax, scan, key, st, xmin=xmin, xmax=xmax)
+    fig.tight_layout()
+    st.save_figure(fig, output, save=save)
     return fig

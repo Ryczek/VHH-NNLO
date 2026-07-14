@@ -8,11 +8,43 @@ This repository accompanies an **in-preparation publication** (*Precise predicti
 
 ---
 
+## What is this, in plain terms?
+
+$W^\pm HH$ and $ZHH$ are LHC processes where a vector boson ($W$ or $Z$) is produced
+alongside **two** Higgs bosons. Their rate is sensitive to the Higgs self-coupling
+and other couplings that are hard to probe otherwise. This code gives you the
+predicted cross section $\sigma$ for these processes at a chosen collider energy,
+either in the **Standard Model (SM)** or at any point in a small set of new-physics
+parameters (Wilson coefficients $\kappa$), computed at **LO** and **NNLO QCD**
+accuracy using **HEFT** (Higgs Effective Field Theory).
+
+Under the hood, each cross section is a fixed polynomial in $\kappa$ with
+coefficients ($A_i$) fitted once and bundled as JSON in `data/`. Evaluating a
+point is therefore just a dot product — fast, closed-form, no simulation needed.
+
+**First time here?** Open [`vhh_prediction.ipynb`](vhh_prediction.ipynb), edit
+the one configuration cell (§1), and run all cells. The notebook has its own
+glossary and walkthrough, so you don't need to read this whole file first.
+
+### Glossary
+
+| Term | Meaning |
+|---|---|
+| **HEFT** | Higgs Effective Field Theory — parametrizes possible deviations from SM Higgs couplings without assuming a specific new-physics model. |
+| $\kappa$ (**kappa**, Wilson coefficient) | Multiplicative rescaling of an SM coupling ($\kappa_\lambda$ = Higgs self-coupling, $\kappa_W/\kappa_Z$ = $VVH$ coupling, $\kappa_{2W}/\kappa_{2Z}$ = contact operator, $\kappa_t$ = top Yukawa, ZHH only). SM = all $\kappa = 1$. |
+| $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$ | Predicted cross section in **fb**, at leading order and next-to-next-to-leading order QCD. |
+| $K$-factor | $\sigma_{\mathrm{NNLO}}/\sigma_{\mathrm{LO}}$ — the size of higher-order QCD corrections. |
+| $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ | Enhancement relative to the SM point ($\kappa=1$), at the same order. |
+| PDF+$\alpha_s$ uncertainty | Symmetric uncertainty from parton distribution functions and the strong coupling constant. |
+| Scale uncertainty | Asymmetric uncertainty from varying renormalization/factorization scales (7-point envelope). |
+
+---
+
 ## What you can do
 
 1. **One point** — print $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$, $K = \sigma_{\mathrm{NNLO}}/\sigma_{\mathrm{LO}}$, and $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ at any $\kappa$.
 2. **Scan** — vary one Wilson coefficient; get uncertainty bands and optional plots.
-3. **Compare** — optional check against bundled MadGraph central values (if present in `data/`).
+3. **Compare** — optional check against bundled simulation central values (if present in `data/`).
 
 ---
 
@@ -45,16 +77,40 @@ jupyter notebook vhh_prediction.ipynb
 
 ## Notebook guide
 
-Open [`vhh_prediction.ipynb`](vhh_prediction.ipynb). Edit **§1**, then run the rest.
+Open [`vhh_prediction.ipynb`](vhh_prediction.ipynb). Edit **§1** (process, flags), **§2** ($\kappa$), **§3** (scan + plots), then run the rest.
 
 | § | What it does | Main output |
 |---|--------------|-------------|
-| **1** | Choose process, energy, $\kappa$, flags | — |
-| **2** | Spot check at one $\kappa$ | printed $\sigma$, $K$, $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ |
-| **3** | Scan one $\kappa$ axis | `scan_data` in memory; optional JSON in `Results/Points/` |
-| **4** | Single-panel plots | PNGs in `Results/Plots/` |
-| **5** | Two-panel plots | PNGs in `Results/Plots/` |
-| **6** | Wilson benchmark tables | `Results/Tables/wilson_tables.tex` |
+| **1** | Process, energy, output flags, `SIGMA_INSET` | — |
+| **2** | Set `KAPPA`; spot-check table | HEFT + uncertainties (+ simulation if enabled) |
+| **3** | Single-axis scan and two-panel plots | `scan_data` + PNGs (+ optional `.txt`) |
+| **4** | Batch scan any set of axes | one `.txt` per axis in `Results/Points/` |
+| **5** | Wilson-coefficient benchmark tables | `Results/Tables/wilson_tables.tex` |
+
+### §3 two-panel plots
+
+| Plot | File suffix |
+|------|-------------|
+| $\sigma_{\mathrm{NNLO}}$ + $K$ | `_sigma_nnlo_K.png` |
+| $\sigma_{\mathrm{NNLO}}$ + $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ (NNLO) | `_sigma_nnlo_sigmaSM_NNLO.png` |
+
+§4 batch scans are independent (save-only, no plots).
+
+### §4 batch scan (API)
+
+```python
+from vhh_predict import scan_axes_and_save, WILSON_INTERVALS
+
+batch = scan_axes_and_save(
+    analysis,
+    ("kappa_lambda", "kappa_t"),
+    windows={"kappa_t": (0.9, 1.1)},  # others → WILSON_INTERVALS
+    fixed_kappa=kappa,
+    n_points=400,
+    save=True,
+)
+# batch["kappa_lambda"] → (scan_data, path)
+```
 
 ### §1 flags (most common)
 
@@ -62,30 +118,27 @@ Open [`vhh_prediction.ipynb`](vhh_prediction.ipynb). Edit **§1**, then run the 
 |----------|---------|
 | `PROCESS` | `WplusHH`, `WminusHH`, or `ZHH` |
 | `ENERGY_TEV` | `13.6` or `14.0` |
-| `KAPPA` | Wilson coefficients at the fixed point (see below) |
-| `COMPARE_SIMULATION` | Compare to MadGraph in §2 only |
-| `SAVE_SCAN_POINTS` | Write scan JSON to `Results/Points/` |
+| `COMPARE_SIMULATION` | Compare to bundled simulation in §2 only |
+| `UNCERTAINTIES_AS_PERCENT` | Print §2 uncertainties as % (`False` → fb) |
+| `SAVE_SCAN_POINTS` | Write scan `.txt` table to `Results/Points/` |
 | `SAVE_PLOTS` | Write plot PNGs to `Results/Plots/` |
-| `SIGMA_INSET` | Zoom inset on $\sigma_{\mathrm{NNLO}}$ panels |
+| `SIGMA_INSET` | Zoom inset on $\sigma_{\mathrm{NNLO}}$ panels (`True` / `False`) |
+| `LEGEND_LOC` | Top-panel legend: `upper left`, `upper right`, `lower left`, `lower right` |
+| `INSET_LOC` | Inset corner (same choices); ignored when `SIGMA_INSET=False` |
 
-### §4 single-panel plots (in order)
+Lower panels ($K$, $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$) have **no legend** — the y-axis label is enough.
 
-| Plot | File suffix |
-|------|-------------|
-| $\sigma_{\mathrm{NNLO}}$ | `_sigma_nnlo.png` |
-| $\sigma_{\mathrm{LO}}$ | `_sigma_lo.png` |
-| $K$ | `_K.png` |
-| $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ (LO) | `_sigmaSM_LO.png` |
-| $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ (NNLO) | `_sigmaSM_NNLO.png` |
+Spot-check table columns **Simulation** and **Δ vs simulation** appear when `COMPARE_SIMULATION=True`.
 
-### §5 two-panel plots
+Plot typography uses `DEFAULT_PLOT_STYLE`; corners via `plot_style_with_layout(...)`.
 
-| Plot | File suffix |
-|------|-------------|
-| $\sigma_{\mathrm{NNLO}}$ + $K$ | `_sigma_nnlo_K.png` |
-| $\sigma_{\mathrm{NNLO}}$ + $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ (NNLO) | `_sigma_nnlo_sigmaSM_NNLO.png` |
+**Scan limits** — set `scan_vmin`, `scan_vmax` in §3.
 
-Run **§3 once** before §4–5. Plot cells reuse `scan_data` from §3 (no second scan).
+### §2 — Wilson coefficients
+
+Set `KAPPA` in the spot-check cell (§2). §3 and §4 scans vary one axis at a time;
+the other components stay at the matching entries in that tuple.
+See **Wilson coefficients ($\kappa$)** below for tuple order.
 
 ---
 
@@ -113,6 +166,19 @@ In the SM, all $\kappa = 1$.
 
 - $W^\pm HH$: `kappa_lambda`, `kappa_w`, `kappa_2w`
 - $ZHH$: `kappa_lambda`, `kappa_z`, `kappa_2z`, `kappa_t`
+
+**95% CL intervals** (Table 2, HEFT Wilson-coefficient uncertainty note; defined as `WILSON_INTERVALS` in `vhh_predict/tables.py`):
+
+| Coefficient | Min | SM | Max |
+|-------------|-----|----|-----|
+| $\kappa_\lambda$ | −1.7 | 1 | 6.6 |
+| $\kappa_W$ | 0.86 | 1 | 1.18 |
+| $\kappa_Z$ | 0.90 | 1 | 1.17 |
+| $\kappa_{2W}$ | 0.4 | 1 | 1.6 |
+| $\kappa_{2Z}$ | 0.4 | 1 | 1.6 |
+| $\kappa_t$ | 0.85 | 1 | 1.15 |
+
+Used as default scan windows in §4 batch scans, as boundary points in §5 Wilson tables, and printed as a reference in §3 (override plot windows with `scan_vmin` / `scan_vmax`).
 
 ---
 
@@ -148,10 +214,20 @@ kappa = (3.0, 1.0, 1.0, 1.0)
 Plots (after a scan with `uncertainties=True`):
 
 ```python
-from vhh_predict.plots import plot_sigma_nnlo_and_kfactor, plot_sigma_lo_only
+from vhh_predict import PlotStyle, default_plot_title, scan_plot_filename_stem
+from vhh_predict.plots import plot_sigma_nnlo_and_kfactor
 
-plot_sigma_lo_only(scan_data, output="Results/Plots/example_sigma_lo.png")
-plot_sigma_nnlo_and_kfactor(scan_data, output="Results/Plots/example_sigma_K.png")
+style = PlotStyle(legend_h="right", legend_v="lower", inset_h="left", inset_v="upper")
+title = default_plot_title("ZHH", 14.0)  # e.g. "Zhh @ NNLO QCD, sqrt(s) = 14 TeV"
+plot_sigma_nnlo_and_kfactor(
+    scan_data,
+    title=title,
+    xmin=scan_vmin,
+    xmax=scan_vmax,
+    style=style,
+    sigma_inset=True,
+    output="Results/Plots/example.png",
+)
 ```
 
 LaTeX Wilson tables:
@@ -212,7 +288,7 @@ VHH-NNLO/
 │   └── {Process}/{13_6TeV|14_0TeV}/
 │       ├── pdf_alpha_s_covariance.json
 │       ├── scale_coefficients.json
-│       └── Simulation/*.out   # MadGraph central values (optional comparison)
+│       └── Simulation/*.out   # simulation central values (optional comparison)
 └── Results/                   # generated outputs (see above)
 ```
 

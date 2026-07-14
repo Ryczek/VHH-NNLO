@@ -13,12 +13,12 @@ from .core import Prediction, predict, scan_axes, sm_kappa
 
 # Table 2 in the HEFT Wilson-coefficient uncertainty note (95% CL intervals).
 WILSON_INTERVALS: Dict[str, Tuple[float, float]] = {
-    "kappa_lambda": (-1.7, 6.6),
-    "kappa_w": (0.86, 1.18),
-    "kappa_z": (0.90, 1.17),
-    "kappa_2w": (0.4, 1.6),
-    "kappa_2z": (0.4, 1.6),
-    "kappa_t": (0.85, 1.15),
+    "kappa_lambda": (-0.7, 6.1),
+    "kappa_w": (0.8, 1.2),
+    "kappa_z": (0.9, 1.2),
+    "kappa_2w": (0.7, 1.3),
+    "kappa_2z": (0.7, 1.3),
+    "kappa_t": (0.8, 1.2),
 }
 
 SM_VALUE = 1.0

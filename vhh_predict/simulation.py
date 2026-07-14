@@ -1,4 +1,4 @@
-"""Compare HEFT predictions to bundled MadGraph .out files under data/.../Simulation/."""
+"""Compare HEFT predictions to bundled simulation ``.out`` files under ``data/.../Simulation/``."""
 
 from __future__ import annotations
 
@@ -181,14 +181,14 @@ def simulation_scan_arrays(
     }
 
 
-def compare_line(heft: float, measured: Optional[float], *, label: str = "sim") -> str:
+def compare_line(heft: float, measured: Optional[float], *, label: str = "simulation") -> str:
     if measured is None or not math.isfinite(measured):
         return NO_SIM
     diff = (heft - measured) / measured * 100.0
     return f"{label} {measured:.6g}  (diff {diff:+.3f}% vs HEFT)"
 
 
-def compare_suffix(heft: float, measured: Optional[float], *, label: str = "sim") -> str:
+def compare_suffix(heft: float, measured: Optional[float], *, label: str = "simulation") -> str:
     """Inline suffix for appending simulation values on the same line as HEFT."""
     if measured is None or not math.isfinite(measured):
         return ""

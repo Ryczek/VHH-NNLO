@@ -330,6 +330,149 @@ def format_prediction(
     return "\n".join(lines)
 
 
+def spot_check_caption(analysis: VHHAnalysis, kappa: Tuple[float, ...]) -> str:
+    """One-line header for spot-check tables."""
+    kappa = _normalize_kappa(analysis.process, kappa)
+    if analysis.is_zhh:
+        kl, kz, k2z, kt = kappa
+        k_str = f"({kl:g}, {kz:g}, {k2z:g}, {kt:g})"
+    else:
+        kl, kw, k2w = kappa
+        k_str = f"({kl:g}, {kw:g}, {k2w:g})"
+    return f"{analysis.process} @ {analysis.energy_tev:g} TeV — κ = {k_str}"
+
+
+def spot_check_table(
+    analysis: VHHAnalysis,
+    kappa: Tuple[float, ...],
+    *,
+    as_percent: bool = False,
+    compare_simulation: bool = False,
+    results_root: Optional[Path] = None,
+):
+    """Spot-check results as a table (HEFT, uncertainties, optional simulation comparison)."""
+    import pandas as pd
+
+    from .simulation import load_simulation_central
+
+    kappa = _normalize_kappa(analysis.process, kappa)
+    p = predict(analysis, kappa)
+    nn_label = analysis.nnlo_label
+    sim = (
+        load_simulation_central(
+            analysis.process,
+            analysis.energy_tev,
+            kappa,
+            root=results_root,
+        )
+        if compare_simulation
+        else None
+    )
+    sim_nnlo = (
+        sim.sigma_hhz if sim and analysis.is_zhh else sim.sigma_nnlo if sim else None
+    )
+
+    def _scale_str(central: float, up: float, down: float) -> str:
+        if not math.isfinite(central) or central == 0.0:
+            return "—"
+        if as_percent:
+            return f"+{_pct(up, central):.2f}% / −{_pct(down, central):.2f}%"
+        return f"+{up:.4g} / −{down:.4g} fb"
+
+    def _pdf_str(central: float, pdf: float) -> str:
+        if not math.isfinite(central) or central == 0.0:
+            return "—"
+        if as_percent:
+            return f"±{_pct(pdf, central):.2f}%"
+        return f"±{pdf:.4g} fb"
+
+    def _heft_str(value: float) -> str:
+        return f"{value:.6g}" if math.isfinite(value) else "—"
+
+    def _sim_str(value: Optional[float]) -> str:
+        if value is None or not math.isfinite(value):
+            return "—"
+        return f"{value:.6g}"
+
+    def _diff_str(heft: float, measured: Optional[float]) -> str:
+        if measured is None or not math.isfinite(measured) or measured == 0.0:
+            return "—"
+        if not math.isfinite(heft):
+            return "—"
+        return f"{100.0 * (heft - measured) / measured:+.2f}%"
+
+    rows: List[Dict[str, str]] = []
+
+    def _add_row(
+        quantity: str,
+        heft: float,
+        scale_up: float,
+        scale_down: float,
+        pdf: float,
+        sim_val: Optional[float],
+        *,
+        with_uncertainty: bool = True,
+    ) -> None:
+        row = {
+            "Quantity": quantity,
+            "HEFT": _heft_str(heft),
+            "Scale (+/−)": _scale_str(heft, scale_up, scale_down) if with_uncertainty else "—",
+            "PDF+αs": _pdf_str(heft, pdf) if with_uncertainty else "—",
+        }
+        if compare_simulation:
+            row["Simulation"] = _sim_str(sim_val)
+            row["Δ vs simulation"] = _diff_str(heft, sim_val)
+        rows.append(row)
+
+    _add_row(
+        "σ_LO [fb]",
+        p.sigma_lo,
+        p.sigma_lo_scale_up,
+        p.sigma_lo_scale_down,
+        p.sigma_lo_pdfas,
+        sim.sigma_lo if sim else None,
+    )
+    _add_row(
+        f"σ_{nn_label} [fb]",
+        p.sigma_nnlo,
+        p.sigma_nnlo_scale_up,
+        p.sigma_nnlo_scale_down,
+        p.sigma_nnlo_pdfas,
+        sim_nnlo,
+    )
+    enh_lo = sm_enhancement(analysis, kappa, "LO")
+    enh_nn = sm_enhancement(analysis, kappa, "NNLO")
+    _add_row(
+        "σ_HEFT/σ_SM (LO)",
+        enh_lo,
+        float("nan"),
+        float("nan"),
+        float("nan"),
+        None,
+        with_uncertainty=False,
+    )
+    _add_row(
+        f"σ_HEFT/σ_SM ({nn_label})",
+        enh_nn,
+        float("nan"),
+        float("nan"),
+        float("nan"),
+        None,
+        with_uncertainty=False,
+    )
+    _add_row(
+        "K",
+        p.k_factor,
+        float("nan"),
+        float("nan"),
+        float("nan"),
+        sim.k_measured if sim else None,
+        with_uncertainty=False,
+    )
+
+    return pd.DataFrame(rows)
+
+
 SCAN_AXES_W = ("kappa_lambda", "kappa_w", "kappa_2w")
 SCAN_AXES_Z = ("kappa_lambda", "kappa_z", "kappa_2z", "kappa_t")
 

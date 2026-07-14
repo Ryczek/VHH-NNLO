@@ -20,6 +20,8 @@ from .core import (
     SCAN_AXES_W,
     SCAN_AXES_Z,
     format_prediction,
+    spot_check_caption,
+    spot_check_table,
     predict,
     resolve_scan_axis,
     scan,
@@ -30,7 +32,14 @@ from .core import (
     sm_enhancement,
     sm_kappa,
 )
-from .scan_io import load_scan_results, scan_and_save, scan_points_path
+from .scan_io import load_scan_results, scan_and_save, scan_axes_and_save, scan_points_path
+from .plot_style import (
+    DEFAULT_PLOT_STYLE,
+    PlotStyle,
+    default_plot_title,
+    plot_style_with_layout,
+    scan_plot_filename_stem,
+)
 from .tables import (
     CHANNELS,
     TABLE_ENERGIES_TEV,
@@ -59,6 +68,8 @@ __all__ = [
     "sm_kappa",
     "sm_enhancement",
     "format_prediction",
+    "spot_check_caption",
+    "spot_check_table",
     "scan",
     "scan_axes",
     "resolve_scan_axis",
@@ -66,6 +77,7 @@ __all__ = [
     "SCAN_AXES_Z",
     "scan_sm_enhancement",
     "scan_and_save",
+    "scan_axes_and_save",
     "load_scan_results",
     "scan_points_path",
     "default_results_root",
@@ -87,6 +99,11 @@ __all__ = [
     "plot_kfactor_only",
     "plot_enhancement_only",
     "plot_sm_enhancement",
+    "PlotStyle",
+    "DEFAULT_PLOT_STYLE",
+    "default_plot_title",
+    "plot_style_with_layout",
+    "scan_plot_filename_stem",
 ]
 
 

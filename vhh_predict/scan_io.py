@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -83,6 +83,64 @@ def scan_and_save(
             data=data,
         )
     return data, out_path
+
+
+def _scan_window_for_axis(
+    axis: str,
+    windows: Optional[Dict[str, Tuple[float, float]]],
+) -> Tuple[float, float]:
+    from .tables import WILSON_INTERVALS
+
+    if windows and axis in windows:
+        lo, hi = windows[axis]
+        return float(lo), float(hi)
+    if axis in WILSON_INTERVALS:
+        return WILSON_INTERVALS[axis]
+    raise KeyError(
+        f"No scan window for {axis!r}; pass windows={{'{axis}': (vmin, vmax)}} "
+        f"or add it to WILSON_INTERVALS"
+    )
+
+
+def scan_axes_and_save(
+    analysis: VHHAnalysis,
+    axes: Sequence[str],
+    *,
+    windows: Optional[Dict[str, Tuple[float, float]]] = None,
+    n_points: int = 400,
+    fixed_kappa: Optional[Tuple[float, ...]] = None,
+    save: bool = True,
+    uncertainties: bool = False,
+) -> Dict[str, Tuple[ArrayDict, Path]]:
+    """Run ``scan_and_save`` for each axis in *axes*.
+
+    Unspecified windows default to ``WILSON_INTERVALS`` from the benchmark tables.
+    Returns ``{scan_x_key: (scan_data, path)}`` in the order of *axes*.
+    """
+    from .core import resolve_scan_axis, scan_axes
+
+    allowed = set(scan_axes(analysis.process))
+    results: Dict[str, Tuple[ArrayDict, Path]] = {}
+    for axis in axes:
+        if axis not in allowed:
+            raise ValueError(
+                f"Invalid scan axis {axis!r} for {analysis.process}; "
+                f"allowed: {', '.join(sorted(allowed))}"
+            )
+        vmin, vmax = _scan_window_for_axis(axis, windows)
+        data, path = scan_and_save(
+            analysis,
+            axis,
+            vmin=vmin,
+            vmax=vmax,
+            fixed_kappa=fixed_kappa,
+            n_points=n_points,
+            save=save,
+            uncertainties=uncertainties,
+        )
+        _, x_key = resolve_scan_axis(analysis.process, axis)
+        results[x_key] = (data, path)
+    return results
 
 
 def load_scan_results(path: Path) -> Dict[str, Any]:
