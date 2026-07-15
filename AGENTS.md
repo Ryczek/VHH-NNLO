@@ -66,10 +66,12 @@ SM: all κ = 1 (`sm_kappa(process)`).
 
 | Coefficient | Min | SM | Max |
 |-------------|-----|-----|-----|
-| κ_λ | −1.7 | 1 | 6.6 |
-| κ_W, κ_Z | 0.9 | 1 | 1.2 |
-| κ_{2W}, κ_{2Z} | 0.4 | 1 | 1.6 |
-| κ_t | 0.9 | 1 | 1.2 |
+| κ_λ | −0.7 | 1 | 6.1 |
+| κ_W | 0.8 | 1 | 1.2 |
+| κ_Z | 0.9 | 1 | 1.2 |
+| κ_{2W} | 0.7 | 1 | 1.3 |
+| κ_{2Z} | 0.7 | 1 | 1.3 |
+| κ_t | 0.8 | 1 | 1.2 |
 
 ZHH tables: **two groups** — `(kappa_lambda, kappa_t)` and `(kappa_z, kappa_2z)`.
 
@@ -145,9 +147,9 @@ Enhancement plots read `sigma_heft_over_sm_*` from scan data.
 ## Notebook sections (`vhh_prediction.ipynb`)
 
 1. **Configuration** — `PROCESS`, `ENERGY_TEV`, output flags, `SIGMA_INSET` (`PLOT_STYLE = DEFAULT_PLOT_STYLE`)
-2. **Spot check** — `spot_check_table()` / `spot_check_caption()` (HEFT table + optional simulation columns)
-3. **Scan and plots** — `scan_vmin`/`scan_vmax`, `scan_and_save(..., uncertainties=True)`, then both two-panel figures in the same cell
-4. **Batch scan** — `scan_axes_and_save(BATCH_SCAN_AXES, ...)` → one `.txt` per axis (no plots)
+2. **Spot check** — `KAPPA` for `spot_check_table()` only (independent of scans)
+3. **Scan and plots** — `FIXED_KAPPA`, `scan_axis`, `scan_and_save(..., fixed_kappa=FIXED_KAPPA)`, then both two-panel figures
+4. **Batch scan** — `FIXED_KAPPA`, `scan_axes_and_save(BATCH_SCAN_AXES, ...)` → one `.txt` per axis (no plots)
 5. **Wilson-coefficient benchmark tables** — all channels + LaTeX → `Results/Tables/wilson_tables.tex`
 
 §3 scan and plots run together (no second scan, no sim overlay on scans).
