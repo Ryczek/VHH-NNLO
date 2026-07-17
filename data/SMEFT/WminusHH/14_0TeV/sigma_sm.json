@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "process": "WminusHH",
+  "energy_tev": 14.0,
+  "sigma_sm_lo": 0.16856094618049614,
+  "sigma_sm_nnlo": 0.19689759484350045,
+  "sm_reference_file": "WminusHH_14_0TeV_cH_Value_0.out"
+}

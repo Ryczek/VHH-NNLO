@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from .analysis import data_root, process_simulation_dir
+from .analysis import heft_data_root, process_simulation_dir
 from .core import resolve_scan_axis, _normalize_kappa
 from .out_parser import (
     kappa_from_filename,
@@ -47,8 +47,10 @@ class SimulationScanPoint:
 
 
 def default_results_root() -> Path:
-    """Return bundled ``data/`` root (legacy name kept for notebooks)."""
-    return data_root()
+    """Return bundled HEFT ``data/HEFT`` root (legacy name kept for notebooks)."""
+    from .analysis import heft_data_root
+
+    return heft_data_root()
 
 
 def _simulation_search_dirs(

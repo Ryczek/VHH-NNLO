@@ -1,6 +1,13 @@
 # VHH-NNLO
 
-Closed-form **HEFT** predictions for **$W^\pm HH$** and **$ZHH$** at **LO HEFT** ($\kappa$ framework) and **NNLO QCD**, with PDF + $\alpha_s$ and scale uncertainties. Coefficients are bundled in `data/` — no Monte Carlo or fitting step required.
+Closed-form predictions for **vector-boson-associated double-Higgs production** ($W^\pm HH$, $ZHH$) at **LO** and **NNLO QCD**, with PDF + $\alpha_s$ and scale uncertainties. The package supports two EFT frameworks:
+
+| Framework | Expansion | Data | Notebook |
+|-----------|-----------|------|----------|
+| **HEFT** | $\sigma = \mathbf{m}(\kappa)^\top \mathbf{A}$ | `data/HEFT/` | [`vhh_prediction_HEFT.ipynb`](vhh_prediction_HEFT.ipynb) |
+| **SMEFT** | $\sigma = \sigma_{\mathrm{SM}} + \sum_i B_i C_i$ | `data/SMEFT/` | [`vhh_prediction_SMEFT.ipynb`](vhh_prediction_SMEFT.ipynb) |
+
+Coefficients and optional simulation reference points are bundled under `data/` — no Monte Carlo or fitting step required.
 
 Accompanies an **in-preparation publication** (*Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory*). Citation to be added when the paper is public.
 
@@ -8,13 +15,15 @@ Accompanies an **in-preparation publication** (*Precise predictions for double H
 
 ## What it does
 
-- **Spot check** — $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$, $K$-factor, and $\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ at any Wilson-coefficient point ($\kappa$).
-- **Scan** — vary one $\kappa$ (§3) or batch-scan **any set of** $\kappa$ axes (§4); optional PDF/scale bands and `.txt` tables in `Results/Points/`.
-- **Plot** — two-panel figures from a §3 scan: $\sigma_{\mathrm{NNLO}}+K$ and $\sigma_{\mathrm{NNLO}}+\sigma_{\mathrm{HEFT}}/\sigma_{\mathrm{SM}}$ → `Results/Plots/`.
-- **Compare** — optional check against bundled simulation central values (§2 only).
-- **Wilson tables** — benchmark tables at 95% CL interval boundaries → LaTeX.
+Both notebooks share the same workflow:
 
-SM: all $\kappa = 1$. Processes: `WplusHH`, `WminusHH`, `ZHH` at **13.6** or **14.0** TeV.
+- **Spot check** — $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$ (HHZ for $ZHH$), $K$-factor, and enhancement over SM at any EFT point.
+- **Scan** — vary one Wilson parameter (§3), or several **simultaneously** on a Cartesian grid (§4); optional PDF/scale bands and `.txt` tables.
+- **Plot** — two-panel figures from a 1D scan: $\sigma_{\mathrm{NNLO}}+K$ and $\sigma/\sigma_{\mathrm{SM}}$.
+- **Compare** — optional check against bundled simulation `.out` files (spot check only).
+- **Benchmark tables** — interval-boundary tables (HEFT $\kappa$ or SMEFT $C_i$).
+
+Processes: `WplusHH`, `WminusHH`, `ZHH` at **13.6** or **14.0** TeV.
 
 ---
 
@@ -27,62 +36,20 @@ git clone <repo-url>
 cd VHH-NNLO
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[notebook]"
-jupyter notebook vhh_prediction.ipynb
+jupyter notebook vhh_prediction_HEFT.ipynb    # HEFT (κ)
+# or
+jupyter notebook vhh_prediction_SMEFT.ipynb   # SMEFT (C_i)
 ```
 
-Run all cells top to bottom. Edit **§1** (process, flags), **§2** ($\kappa$), **§3** (scan + plots), then the rest.
+Run all cells top to bottom. Edit **§1** (process, flags), **§2** (EFT point), **§3** (scan + plots).
 
-> Always start Jupyter from the repo root — paths to `data/` and `Results/` are relative to it.
-
----
-
-## Notebook layout
-
-[`vhh_prediction.ipynb`](vhh_prediction.ipynb) is the main entry point:
-
-**Setup** — Adds the repo to `sys.path`, imports `vhh_predict`, and checks that `data/` exists. Run once; nothing to edit.
-
-**§1 Configuration** — Choose the physics setup: process (`WplusHH`, `WminusHH`, or `ZHH`), energy (13.6 or 14 TeV), and output switches (save scan tables, save plots, compare to simulation). Plot styling (legend/inset corners, σ inset zoom) is set here too. Loads the analysis object used everywhere below. The Wilson 95% CL interval table is listed here for reference when picking scan ranges.
-
-**§2 Spot check** — Set `KAPPA`, a single Wilson-coefficient point, and print a table of LO/NNLO cross sections, K-factor, enhancement over SM, and scale + PDF+αs uncertainties. Optional simulation columns compare to bundled `.out` files. This point is **only** for the table — scans use `FIXED_KAPPA` in §3–§4 instead.
-
-**§3 Scan and plots** — Pick one κ axis to vary (`scan_axis`) and a window (`scan_vmin` … `scan_vmax`). Set `FIXED_KAPPA` for all **other** κ components. The cell runs the 1D grid, keeps uncertainty bands in memory, optionally writes a `.txt` to `Results/Points/`, then produces two figures: σ_NNLO + K, and σ_NNLO + σ_HEFT/σ_SM (NNLO).
-
-**§4 Batch scan** — Same idea as §3, but loop over **many** axes at once (`BATCH_SCAN_AXES`), one output file per axis. Save-only (no plots); windows default to the Wilson intervals unless you override them in `BATCH_SCAN_WINDOWS`. Set `BATCH_SCAN_AXES = ()` to skip.
-
-**§5 Wilson tables** — Independent of §1–§4: builds paper-style benchmark tables for all three channels at both energies, evaluating σ_NNLO at SM and at each κ interval boundary. Displays tables in the notebook and writes combined LaTeX to `Results/Tables/wilson_tables.tex`.
-
-| Section | Main knobs | Output |
-|---------|------------|--------|
-| Setup | — | imports |
-| §1 | `PROCESS`, `ENERGY_TEV`, flags, plot layout | `analysis` |
-| §2 | `KAPPA` | spot-check table |
-| §3 | `FIXED_KAPPA`, `scan_axis`, scan window | PNGs + optional `.txt` |
-| §4 | `FIXED_KAPPA`, `BATCH_SCAN_AXES` | one `.txt` per axis |
-| §5 | — (run as-is) | LaTeX tables |
+> Always start Jupyter from the repo root — paths to `data/HEFT/`, `data/SMEFT/`, and `Results/` are relative to it.
 
 ---
 
-## Main options
+## HEFT ($\kappa$ framework)
 
-Key variables (details in the notebook sections above):
-
-| Variable | Section | Role |
-|----------|---------|------|
-| `PROCESS`, `ENERGY_TEV` | §1 | Channel and collider energy |
-| `COMPARE_SIMULATION`, `UNCERTAINTIES_AS_PERCENT` | §1 / §2 | Spot-check table format |
-| `SAVE_SCAN_POINTS`, `SAVE_PLOTS` | §1 | Write `.txt` scans and PNG figures |
-| `SIGMA_INSET`, `LEGEND_LOC`, `INSET_LOC` | §1 | Plot layout (§3) |
-| `KAPPA` | §2 | Spot-check point only (table in §2) |
-| `FIXED_KAPPA` | §3, §4 | Full κ tuple; non-scanned components held at these values |
-| `scan_axis`, `scan_vmin`, `scan_vmax` | §3 | Which κ to sweep and over what range |
-| `BATCH_SCAN_AXES`, `BATCH_SCAN_WINDOWS` | §4 | Multi-axis batch scan |
-
-**Outputs:** `Results/Points/` (scan `.txt`), `Results/Plots/` (figures), `Results/Tables/` (`wilson_tables.tex`).
-
----
-
-## Wilson coefficients ($\kappa$)
+**Notebook:** [`vhh_prediction_HEFT.ipynb`](vhh_prediction_HEFT.ipynb)
 
 SM: all $\kappa = 1$.
 
@@ -95,19 +62,14 @@ SM: all $\kappa = 1$.
 | $\kappa_{2Z}$ | $ZZHH$ coupling | — | ✓ |
 | $\kappa_t$ | $tth$ coupling | — | ✓ |
 
-**Tuple order** (must match exactly):
+**Tuple order:**
 
-| Process | `KAPPA` (§2) / `FIXED_KAPPA` (§3–§4) |
-|---------|-------------------------------------|
-| `WplusHH`, `WminusHH` | `(κ_λ, κ_W, κ_2W)` — 3 numbers |
-| `ZHH` | `(κ_λ, κ_Z, κ_2Z, κ_t)` — 4 numbers |
+| Process | `KAPPA` / `FIXED_KAPPA` |
+|---------|-------------------------|
+| `WplusHH`, `WminusHH` | `(κ_λ, κ_W, κ_{2W})` |
+| `ZHH` | `(κ_λ, κ_Z, κ_{2Z}, κ_t)` |
 
-**Scan axes** (one coefficient varied per scan; others fixed at `FIXED_KAPPA`):
-
-- $W^\pm HH$: `kappa_lambda`, `kappa_w`, `kappa_2w`
-- $ZHH$: `kappa_lambda`, `kappa_z`, `kappa_2z`, `kappa_t`
-
-**95% CL intervals** (Table 2, HEFT Wilson-coefficient uncertainty note; `WILSON_INTERVALS` in `vhh_predict/tables.py`):
+**95% CL intervals** (`WILSON_INTERVALS` in `vhh_predict/tables.py`):
 
 | Coefficient | Min | SM | Max |
 |-------------|-----|----|-----|
@@ -118,7 +80,43 @@ SM: all $\kappa = 1$.
 | $\kappa_{2Z}$ | 0.7 | 1 | 1.3 |
 | $\kappa_t$ | 0.8 | 1 | 1.2 |
 
-Default batch-scan windows (§4) and Wilson benchmark tables (§5) use these bounds; override plot windows with `scan_vmin` / `scan_vmax` in §3.
+---
+
+## SMEFT ($C_i$ framework)
+
+**Notebook:** [`vhh_prediction_SMEFT.ipynb`](vhh_prediction_SMEFT.ipynb)
+
+Linear expansion with Wilson coefficients $C_i$ in $\mathrm{TeV}^{-2}$ and $B_i$ in $\mathrm{fb\,TeV}^2$:
+
+- **$W^\pm HH$:** $B_1$–$B_5$ ↔ $C_\varphi$, $C_{\varphi\square}$, $C_{\varphi D}$, $C_{\varphi q}^{(3)}$, $C_{\varphi W}$
+- **$ZHH$ LO:** $B_1$–$B_{10}$ (eq. 80 in the paper)
+- **$ZHH$ NNLO:** adds $B_{11}$ ($C_{t\varphi}$) and $B_{12}$ ($C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}$)
+
+SM: all $C_i = 0$. Set **`WCS`** as a dictionary, e.g. `{"phiW": -0.2}`.
+
+**Allowed Wilson-coefficient intervals** (global fit, Ref. terHoeve:2025gey; `SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py`):
+
+| Bosonic $C_i$ [TeV$^{-2}$] | Interval |
+|----------------------------|----------|
+| $C_\varphi$ | [−15, 5] |
+| $C_{\varphi W}$ | [−1, 1] |
+| $C_{\varphi B}$ | [−0.5, 0.5] |
+| $C_{\varphi WB}$ | [−1.5, 1.5] |
+| $C_{\varphi D}$ | [−2, 2] |
+| $C_{\varphi\square}$ | [−1.5, 1.5] |
+
+| Fermionic $C_i$ [TeV$^{-2}$] | Interval |
+|------------------------------|----------|
+| $C_{\varphi q}^{(3)}$ | [−0.2, 0.05] |
+| $C_{\varphi q}^{(1)}$ | [−3, 1] |
+| $C_{\varphi u}$ | [−3.5, 1] |
+| $C_{\varphi d}$ | [−4, 4] |
+| $C_{t\varphi}$ | [−15, 5] |
+| $C_{\varphi t}$ | [−24.4, 33.9] |
+| $C_{\varphi Q}^{(3)}$ | [−7.7, 2] |
+| $C_{\varphi Q}^{(1)}$ | [−6.5, 30.5] |
+
+> **$C_{t\varphi}$ ≠ $C_{\varphi t}$:** $C_{t\varphi}$ ($\mathcal{O}_{u\varphi}$, Fortran `cth`) enters $B_{11}$; $C_{\varphi t}$ enters $B_{12}$ with $C_{\varphi Q}^{(3)}$ and $C_{\varphi Q}^{(1)}$. In this release $B_{12}$ is scanned as the combination $C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}$ (`phiQ3rd`, default window [−8, 2]).
 
 ---
 
@@ -126,23 +124,55 @@ Default batch-scan windows (§4) and Wilson benchmark tables (§5) use these bou
 
 ```
 VHH-NNLO/
-├── vhh_prediction.ipynb       # start here
+├── vhh_prediction_HEFT.ipynb   # HEFT entry point
+├── vhh_prediction_SMEFT.ipynb  # SMEFT entry point
 ├── README.md
-├── pyproject.toml             # Python packaging (see below)
-├── vhh_predict/               # importable package (predict, scan, plots, tables, …)
-├── data/                      # bundled HEFT coefficients (read at runtime)
-│   └── {Process}/{13_6TeV|14_0TeV}/
+├── AGENTS.md
+├── pyproject.toml
+├── scripts/
+│   └── build_smeft_package_data.py   # regenerate data/SMEFT from SMEFT_Results
+├── vhh_predict/                # importable package
+│   ├── analysis.py             # path helpers, load_analysis() [HEFT]
+│   ├── core.py                 # HEFT predict/scan
+│   ├── smeft_*.py              # SMEFT load/predict/scan/simulation
+│   └── ...
+├── data/
+│   ├── HEFT/{Process}/{13_6TeV|14_0TeV}/
+│   │   ├── pdf_alpha_s_covariance.json
+│   │   ├── scale_coefficients.json
+│   │   ├── {Process}_{energy}_analysis_A.txt
+│   │   └── Simulation/*.out
+│   └── SMEFT/{Process}/{13_6TeV|14_0TeV}/
 │       ├── pdf_alpha_s_covariance.json
 │       ├── scale_coefficients.json
-│       ├── {Process}_{energy}_analysis_A.txt   # human reference only
-│       └── Simulation/*.out                    # optional simulation compare
-└── Results/                   # notebook output (created on first run)
-    ├── Points/                # scan tables (.txt)
-    ├── Plots/                 # figures (.png)
-    └── Tables/                # wilson_tables.tex
+│       ├── sigma_sm.json
+│       ├── {Process}_{energy}_analysis_B.txt
+│       └── Simulation/*.out
+└── Results/                    # notebook output (created on first run)
+    ├── Points/                 # HEFT scan tables
+    │   └── SMEFT/              # SMEFT scan tables
+    ├── Plots/
+    │   └── SMEFT/
+    └── Tables/
+        └── SMEFT/
 ```
 
 `Process` is `WplusHH`, `WminusHH`, or `ZHH`. Energies use folder names `13_6TeV` and `14_0TeV`.
+
+Human-readable `*_analysis_A.txt` / `*_analysis_B.txt` files are reference only; the code reads JSON at runtime.
+
+---
+
+## Regenerating SMEFT data
+
+From the main analysis repository (with `SMEFT_Results/` present):
+
+```bash
+cd VHH-NNLO
+python scripts/build_smeft_package_data.py --repo-root /path/to/pphhV
+```
+
+This rebuilds `data/SMEFT/` including B coefficients, uncertainties, and simulation `.out` files from `full/` scans.
 
 ---
 

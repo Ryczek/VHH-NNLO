@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vhh-predict"
 version = "0.1.0"
-description = "HEFT closed-form predictions for W±HH and ZHH production"
+description = "HEFT and SMEFT closed-form predictions for W±HH and ZHH production"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

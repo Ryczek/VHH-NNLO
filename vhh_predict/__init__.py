@@ -1,12 +1,15 @@
 """
-VHH HEFT closed-form predictions at NNLO.
+VHH HEFT and SMEFT closed-form predictions at NNLO.
 
-Predict σ_LO, σ_NNLO, and K from bundled ``data/`` coefficients.
+HEFT: predict σ from bundled ``data/HEFT/`` A coefficients.
+SMEFT: predict σ from bundled ``data/SMEFT/`` B coefficients (see ``smeft_*`` modules).
 """
 
 from .analysis import (
     VHHAnalysis,
     data_root,
+    heft_data_root,
+    smeft_data_root,
     load_analysis,
     plots_dir,
     points_dir,
@@ -32,7 +35,7 @@ from .core import (
     sm_enhancement,
     sm_kappa,
 )
-from .scan_io import load_scan_results, scan_and_save, scan_axes_and_save, scan_points_path
+from .scan_io import load_scan_results, scan_and_save, scan_axes_and_save, scan_grid_and_save, scan_points_path
 from .plot_style import (
     DEFAULT_PLOT_STYLE,
     PlotStyle,
@@ -55,6 +58,8 @@ __all__ = [
     "VHHAnalysis",
     "Prediction",
     "data_root",
+    "heft_data_root",
+    "smeft_data_root",
     "results_dir",
     "plots_dir",
     "points_dir",
@@ -78,6 +83,7 @@ __all__ = [
     "scan_sm_enhancement",
     "scan_and_save",
     "scan_axes_and_save",
+    "scan_grid_and_save",
     "load_scan_results",
     "scan_points_path",
     "default_results_root",

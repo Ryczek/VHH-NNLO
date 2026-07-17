@@ -12,6 +12,7 @@ from .covariance_matrices import load_covariance_matrices, pdf_alpha_s_covarianc
 from .scale_coefficients import ScaleDict, load_scale_coefficients, scale_coefficients_path
 
 PROCESSES = ("ZHH", "WplusHH", "WminusHH")
+FRAMEWORKS = ("HEFT", "SMEFT")
 
 
 @dataclass
@@ -47,8 +48,19 @@ def package_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def data_root() -> Path:
-    return package_root() / "data"
+def data_root(framework: str = "HEFT") -> Path:
+    fw = framework.upper()
+    if fw not in FRAMEWORKS:
+        raise KeyError(f"Unknown framework: {framework} (use HEFT or SMEFT)")
+    return package_root() / "data" / fw
+
+
+def heft_data_root() -> Path:
+    return data_root("HEFT")
+
+
+def smeft_data_root() -> Path:
+    return data_root("SMEFT")
 
 
 def results_dir() -> Path:
@@ -67,8 +79,14 @@ def points_dir() -> Path:
     return results_dir() / "Points"
 
 
-def process_data_dir(process: str, energy_tev: float, root: Optional[Path] = None) -> Path:
-    root = root or data_root()
+def process_data_dir(
+    process: str,
+    energy_tev: float,
+    root: Optional[Path] = None,
+    *,
+    framework: str = "HEFT",
+) -> Path:
+    root = root or data_root(framework)
     e = float(energy_tev)
     if abs(e - 13.6) < 0.05:
         tag = "13_6TeV"
@@ -86,9 +104,12 @@ def process_simulation_dir(
     energy_tev: float,
     *,
     data_root_override: Optional[Path] = None,
+    framework: str = "HEFT",
 ) -> Path:
-    """Bundled simulation central values: ``data/{Process}/{energy}/Simulation/``."""
-    return process_data_dir(process, energy_tev, root=data_root_override) / "Simulation"
+    """Bundled simulation central values: ``data/{framework}/{Process}/{energy}/Simulation/``."""
+    return process_data_dir(
+        process, energy_tev, root=data_root_override, framework=framework
+    ) / "Simulation"
 
 
 def load_analysis(

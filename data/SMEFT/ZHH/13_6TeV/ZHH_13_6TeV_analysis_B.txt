@@ -1,0 +1,85 @@
+============================================================
+Analysis timestamp: 2026-07-17T11:42:50
+Input directory: /Users/michalryczkowski/Documents/Projects/Current/Gioia/Code_16_07/pphhV_corrected/SMEFT_Results/ZHH/13_6TeV
+Process: ZHH
+Energy: 13.6 TeV
+
+SMEFT linear expansion — ZHH LO (eq. 80):
+  σ_LO = σ_LO^SM + B1 C_φ/Λ² + B2 C_φ□/Λ² + B3 C_φD/Λ² + B4 C_φq^(3)/Λ²
+        + B5 C_φW/Λ² + B6 C_φq^(1)/Λ² + B7 C_φu/Λ² + B8 C_φd/Λ²
+        + B9 C_φB/Λ² + B10 C_φWB/Λ²
+SMEFT linear expansion — ZHH NNLO (eq. 81): same B1–B10 plus
+  B11 C_tφ/Λ²  +  B12 (C_φt + C_φQ^(3) − C_φQ^(1))/Λ²
+  (B11, B12 from the gg→Zhh channel)
+
+Extraction (all other WCs = 0; WC input already in TeV^{-2}):
+  B_i = (σ(C_i) − σ_SM) / C_i
+  Reference C_i = smallest |C|≠0 with a valid central entry.
+
+Operator map (C_tφ ≠ C_φt):
+  B1 [LO,NNLO] ↔ $C_\varphi$ ↔ cH ↔ phi  ($\mathcal{O}_\varphi$ ($C_\varphi$))
+  B2 [LO,NNLO] ↔ $C_{\varphi\square}$ ↔ cHsq ↔ phiBox  ($\mathcal{O}_{\varphi\square}$ ($C_{\varphi\square}$))
+  B3 [LO,NNLO] ↔ $C_{\varphi D}$ ↔ cHdup ↔ phiD  ($\mathcal{O}_{\varphi D}$ ($C_{\varphi D}$))
+  B4 [LO,NNLO] ↔ $C_{\varphi q}^{(3)}$ ↔ cHq3st ↔ phiq3st  ($\mathcal{O}_{\varphi q}^{(3)}$ ($C_{\varphi q}^{(3)}$))
+  B5 [LO,NNLO] ↔ $C_{\varphi W}$ ↔ cHw ↔ phiW  ($\mathcal{O}_{\varphi W}$ ($C_{\varphi W}$))
+  B6 [LO,NNLO] ↔ $C_{\varphi q}^{(1)}$ ↔ cHq1st ↔ phiq1st  ($\mathcal{O}_{\varphi q}^{(1)}$ ($C_{\varphi q}^{(1)}$))
+  B7 [LO,NNLO] ↔ $C_{\varphi u}$ ↔ chust ↔ phiu  ($\mathcal{O}_{\varphi u}$ ($C_{\varphi u}$))
+  B8 [LO,NNLO] ↔ $C_{\varphi d}$ ↔ chdst ↔ phid  ($\mathcal{O}_{\varphi d}$ ($C_{\varphi d}$))
+  B9 [LO,NNLO] ↔ $C_{\varphi B}$ ↔ cHb ↔ phiB  ($\mathcal{O}_{\varphi B}$ ($C_{\varphi B}$))
+  B10 [LO,NNLO] ↔ $C_{\varphi WB}$ ↔ cHwb ↔ phiWB  ($\mathcal{O}_{\varphi WB}$ ($C_{\varphi WB}$))
+  B11 [NNLO] ↔ $C_{t\varphi}$ ↔ cth ↔ tphi  ($\mathcal{O}_{u\varphi}$ ($C_{t\varphi}$))  [NNLO/gg only; C_tφ (Fortran cth). Distinct from C_φt.]
+  B12 [NNLO] ↔ $C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}$ ↔ cHq3rd ↔ phiQ3rd  ($\mathcal{O}_{\varphi Q}^{(3)}\ \mathrm{(in\ B_{12}\ combo)}$ ($C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}$))  [NNLO/gg only; multiplies (C_φt + C_φQ^(3) − C_φQ^(1)). Extracted from cHq3rd scan (others in combo = 0).]
+  NOTE: C_tφ (B11, Fortran cth, legacy disk 'phit') ≠ C_φt (enters B12, Fortran churd).
+
+Files used:
+  B1: SM=ZHH_13_6TeV_cH_Value_0.out  C=2.5 → ZHH_13_6TeV_cH_Value_2_5.out
+  B2: SM=ZHH_13_6TeV_cHsq_Value_0.out  C=-0.333333 → ZHH_13_6TeV_cHsq_Value_-0_333333.out
+  B3: SM=ZHH_13_6TeV_cHdup_Value_0.out  C=-0.3 → ZHH_13_6TeV_cHdup_Value_-0_3.out
+  B4: MISSING scan under full/ or loop/
+  B5: SM=ZHH_13_6TeV_cHw_Value_0.out  C=-0.2 → ZHH_13_6TeV_cHw_Value_-0_2.out
+  B6: MISSING scan under full/ or loop/
+  B7: MISSING scan under full/ or loop/
+  B8: MISSING scan under full/ or loop/
+  B9: SM=ZHH_13_6TeV_cHb_Value_0.out  C=-0.1 → ZHH_13_6TeV_cHb_Value_-0_1.out
+  B10: SM=ZHH_13_6TeV_cHwb_Value_0.out  C=-0.2 → ZHH_13_6TeV_cHwb_Value_-0_2.out
+  B11: SM=ZHH_13_6TeV_cth_Value_0.out  C=2.5 → ZHH_13_6TeV_cth_Value_2_5.out
+  B12: SM=ZHH_13_6TeV_cHq3rd_Value_0.out  C=1 → ZHH_13_6TeV_cHq3rd_Value_1.out
+
+Uncertainty prescription:
+  Scale: 7-point envelope at NSET=0 over
+         (0.5,0.5), (1,0.5), (0.5,1), (1,1), (2,1), (1,2), (2,2)
+  PDF: [sum_{n=1..40} (B_i^n − B_i^0)^2]^(1/2)
+  alpha_s: (B^42 − B^41)/2
+  PDF+alpha_s: [delta_PDF^2 + delta_alpha_s^2]^(1/2)
+
+=== LO (fb TeV^2) ===
+name  central         +sca           -sca           PDF            alpha_s        PDF+alpha_s
+B1    -0.06972014061  0.0007051475198  0.0005160422004  0.001387253867  -7.392456102e-05  0.001389222132
+B2     0.2187665866  0.002715870141  0.003166897112  0.004563872268  0.0001312685476  0.004565759686
+B3      0.013479539  0.0003533967454  0.0003495207417  0.0003229619422  -4.712624794e-06  0.0003229963234
+B5     0.4277749348  0.007962340276  0.008430302301  0.009560609221  -2.662526054e-06  0.009560609591
+B9     0.1934102573  0.003656301936  0.003854598522  0.004334707236  -5.822378738e-06  0.004334711146
+B10   -0.3223624351  0.005737437932  0.005281387109  0.007104674942  -6.242328767e-05  0.007104949169
+
+=== NNLO/HHZ (fb TeV^2) ===
+name  central         +sca           -sca           PDF            alpha_s        PDF+alpha_s
+B1    -0.08499583273  0.0005604649754  0.0006120701091  0.001708463011  -0.0002498510955  0.001726635871
+B2     0.2786384386  0.004770227226  0.004033612269  0.005649210304  0.0007695884703  0.005701389609
+B3    0.01802647122  0.000476961676  0.0004369184817  0.0004167433688  4.252402636e-05  0.0004189073027
+B5      0.506349603  0.007041138736  0.006282166897   0.0115289483  0.0006478565263  0.01154713674
+B9     0.2289783806  0.00320854268  0.00281660389  0.005229030971  0.0002871869112  0.005236911419
+B10   -0.3830399949  0.003487555805  0.003831396164  0.008628063534  -0.0006135665678  0.008649852269
+B11   -0.003967709595  0.000756951767  0.0009941988656  7.244116749e-05  -3.568292908e-05  8.075267287e-05
+B12   0.003770650038  0.0009937830332  0.000743507185  7.999801475e-05  3.805043461e-05  8.858621754e-05
+
+=== K factors for coefficients (K_i = B_i^NNLO/HHZ / B_i^LO) ===
+name  central(K_i)    +sca           -sca           PDF+alpha_s
+B1      1.219100133  0.01471901929  0.01258929632  0.03468991012
+B2      1.273679143  0.02693479432  0.02607522578  0.03722660292
+B3      1.337321048  0.04981268548  0.04746664887  0.04463932288
+B5      1.183682263  0.02750186524  0.02756498481  0.03779560369
+B9      1.183899881  0.02785874798   0.0277270047  0.03791012836
+B10     1.188227762  0.02375481502  0.02280862688  0.03749464887
+
+Final notation (LO/NNLO/HHZ): B_i = <B_i>^{+delta_sca_sup}_{-delta_sca_inf} +/- delta_(PDF+alpha_s)
+Units: fb TeV^2  (σ in fb, Wilson coefficients in TeV^{-2}).

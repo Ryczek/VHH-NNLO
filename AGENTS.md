@@ -4,169 +4,162 @@ Context for AI agents working in this repository.
 
 ## Purpose
 
-Closed-form **HEFT** predictions for vector-boson-associated Higgs-pair production:
+Closed-form predictions for vector-boson-associated Higgs-pair production in two frameworks:
+
+| Framework | Formula | Data root | Main loader |
+|-----------|---------|-----------|-------------|
+| **HEFT** | $\sigma = \mathbf{m}(\kappa)^\top \mathbf{A}$ | `data/HEFT/` | `load_analysis()` |
+| **SMEFT** | $\sigma = \sigma_{\mathrm{SM}} + \sum_i B_i C_i$ | `data/SMEFT/` | `load_smeft_analysis()` |
 
 - Processes: `WplusHH`, `WminusHH`, `ZHH`
 - Energies: **13.6 TeV** and **14.0 TeV**
-- Orders: **LO** and **NNLO** (ZHH NNLO uses the HHZ component label in outputs)
+- Orders: **LO** and **NNLO** (ZHH NNLO uses HHZ label in outputs)
 
-Predictions use bundled JSON under `data/`, not external Monte Carlo.
+Predictions use bundled JSON under `data/{HEFT|SMEFT}/`, not external Monte Carlo.
 
 ## Repository layout
 
 ```
 VHH-NNLO/
-├── vhh_prediction.ipynb      # Main entry point (run from repo root)
-├── pyproject.toml            # pip packaging config
+├── vhh_prediction_HEFT.ipynb   # HEFT entry point
+├── vhh_prediction_SMEFT.ipynb  # SMEFT entry point
+├── scripts/build_smeft_package_data.py
 ├── vhh_predict/
-│   ├── analysis.py           # load_analysis(), path helpers (data_root, plots_dir, points_dir, …)
-│   ├── core.py               # predict(), scan(), format_prediction(), sm_enhancement()
-│   ├── scan_io.py            # scan_and_save(), load_scan_results(), scan_points_path()
-│   ├── tables.py             # Wilson-interval benchmark tables + LaTeX
-│   ├── simulation.py         # bundled simulation .out comparison helpers
-│   ├── out_parser.py
-│   ├── monomials.py
-│   ├── covariance_matrices.py
-│   ├── scale_coefficients.py
-│   ├── plot_style.py           # PlotStyle dataclass (typography, inset, legend)
-│   └── plots.py
+│   ├── analysis.py             # load_analysis(), path helpers
+│   ├── core.py                 # HEFT predict(), scan(), …
+│   ├── smeft_analysis.py       # load_smeft_analysis()
+│   ├── smeft_core.py           # SMEFT predict(), scan(), spot_check_table()
+│   ├── smeft_operators.py      # WC keys, intervals, scan axes
+│   ├── smeft_simulation.py     # SMEFT .out comparison
+│   ├── smeft_scan_io.py        # SMEFT scan_and_save()
+│   ├── smeft_tables.py         # SMEFT benchmark tables
+│   ├── scan_io.py, tables.py, simulation.py, plots.py, …
 ├── data/
-│   └── {Process}/{13_6TeV|14_0TeV}/
-│       ├── pdf_alpha_s_covariance.json
-│       ├── scale_coefficients.json
-│       ├── {Process}_{energy}_analysis_A.txt   # human reference only
+│   ├── HEFT/{Process}/{13_6TeV|14_0TeV}/
+│   │   ├── pdf_alpha_s_covariance.json
+│   │   ├── scale_coefficients.json
+│   │   ├── {Process}_{energy}_analysis_A.txt   # human reference only
+│   │   └── Simulation/*.out
+│   └── SMEFT/{Process}/{13_6TeV|14_0TeV}/
+│       ├── pdf_alpha_s_covariance.json   # B_i + diagonal covariances
+│       ├── scale_coefficients.json       # B_i refit at 7 scale points
+│       ├── sigma_sm.json
+│       ├── {Process}_{energy}_analysis_B.txt
 │       └── Simulation/*.out
 └── Results/
-    ├── Points/               # scan JSON from scan_and_save()
-    ├── Plots/                # notebook figures
-    └── Tables/               # LaTeX tables
+    ├── Points/ (+ SMEFT/)
+    ├── Plots/ (+ SMEFT/)
+    └── Tables/ (+ SMEFT/)
 ```
 
-Path resolution: `package_root()` = parent of `vhh_predict/` (repo root in dev). `data_root()` = `package_root() / "data"`.
+Path resolution:
 
-## Physics / API
+- `package_root()` = parent of `vhh_predict/` (repo root in dev)
+- `heft_data_root()` = `package_root() / "data" / "HEFT"`
+- `smeft_data_root()` = `package_root() / "data" / "SMEFT"`
+- `data_root(framework)` accepts `"HEFT"` or `"SMEFT"`
 
-### Prediction formula
+## HEFT physics / API
+
+### Prediction
 
 σ(κ) = **m**(κ)ᵀ **A**, with PDF+αs uncertainty √(mᵀ C m).
 
 - Scale uncertainty: 7-point envelope from refitted **A** in `scale_coefficients.json`
-- K-factor: σ_NNLO / σ_LO (central value printed; no K uncertainty in `format_prediction()`)
+- K-factor: σ_NNLO / σ_LO
 
-### κ tuple layout (order matters — no auto-padding)
+### κ tuple layout
 
 | Process | κ tuple | Scan axes |
 |---------|---------|-----------|
-| `WplusHH`, `WminusHH` | `(κ_λ, κ_W, κ_2W)` — **3 values** | `kappa_lambda`, `kappa_w`, `kappa_2w` |
-| `ZHH` | `(κ_λ, κ_Z, κ_2Z, κ_t)` — **4 values** | `kappa_lambda`, `kappa_z`, `kappa_2z`, `kappa_t` |
+| `WplusHH`, `WminusHH` | `(κ_λ, κ_W, κ_{2W})` | `kappa_lambda`, `kappa_w`, `kappa_2w` |
+| `ZHH` | `(κ_λ, κ_Z, κ_{2Z}, κ_t)` | `kappa_lambda`, `kappa_z`, `kappa_2z`, `kappa_t` |
 
 SM: all κ = 1 (`sm_kappa(process)`).
 
-### Wilson-coefficient intervals (benchmark tables, §5 notebook section)
+### Wilson intervals (HEFT)
 
-| Coefficient | Min | SM | Max |
-|-------------|-----|-----|-----|
-| κ_λ | −0.7 | 1 | 6.1 |
-| κ_W | 0.8 | 1 | 1.2 |
-| κ_Z | 0.9 | 1 | 1.2 |
-| κ_{2W} | 0.7 | 1 | 1.3 |
-| κ_{2Z} | 0.7 | 1 | 1.3 |
-| κ_t | 0.8 | 1 | 1.2 |
+See `WILSON_INTERVALS` in `vhh_predict/tables.py`.
 
-ZHH tables: **two groups** — `(kappa_lambda, kappa_t)` and `(kappa_z, kappa_2z)`.
+### Simulation (HEFT)
 
-### Simulation comparison
+`data/HEFT/{Process}/{energy}/Simulation/*.out` — κ-encoded filenames.
 
-`data/{Process}/{energy}/Simulation/*.out` — bundled simulation central values.
+`COMPARE_SIMULATION` in HEFT notebook: **§2 spot check only**.
 
-- `COMPARE_SIMULATION` in notebook: **§2 spot check only** (not on scan plots)
-- `load_simulation_central()`, `collect_simulation_scan_points()` in `simulation.py`
+## SMEFT physics / API
+
+### Prediction
+
+σ = σ_SM + **C**ᵀ **B** (LO and NNLO/HHZ separately), with $C_i$ in TeV⁻², $B_i$ in fb·TeV².
+
+- PDF+αs: √(C_wcᵀ C C_wc) with diagonal C from single-operator B extraction
+- Scale: 7-point envelope on σ using refitted B_i and σ_SM at each (μ_R, μ_F)
+
+### WC keys (logical names)
+
+| Channel | LO keys | NNLO extras (ZHH only) |
+|---------|---------|------------------------|
+| W± | `phi`, `phiBox`, `phiD`, `phiq3st`, `phiW` | — |
+| ZHH | above + `phiq1st`, `phiu`, `phid`, `phiB`, `phiWB` | `tphi` ($C_{t\varphi}$), `phiQ3rd` (B₁₂ combo) |
+
+SM: all C_i = 0 (`sm_wc_values(process)`).
+
+### WC intervals (SMEFT)
+
+`SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py` — bosonic and fermionic tables match the paper (terHoeve:2025gey global fit).
+
+### Simulation (SMEFT)
+
+`data/SMEFT/{Process}/{energy}/Simulation/*.out` — Fortran coefficient encoded in filename (`cHw_Value_-0_2`, etc.).
+
+`load_smeft_simulation_central()`, `find_smeft_simulation_out()` in `smeft_simulation.py`.
 
 ## Key functions
 
+### HEFT
+
 ```python
-from vhh_predict import (
-    load_analysis, predict, format_prediction, scan, scan_and_save,
-    load_scan_results, build_channel_tables, all_channels_latex,
-    plots_dir, points_dir, tables_dir, results_dir,
-)
+from vhh_predict import load_analysis, predict, scan_and_save
 
 analysis = load_analysis("ZHH", 14.0)
-p = predict(analysis, (1.0, 1.0, 1.0, 1.0))   # ZHH needs 4-tuple
-
-scan_data, path = scan_and_save(
-    analysis, "kappa_t", vmin=0.85, vmax=1.15,
-    fixed_kappa=(3.0, 1.0, 1.0, 1.0),
-    n_points=400, uncertainties=True, save=True,
-)
+p = predict(analysis, (1.0, 1.0, 1.0, 1.0))   # ZHH: 4-tuple κ
 ```
 
-### Scan I/O
+### SMEFT
 
-- `scan_and_save()` — one axis → optional `Results/Points/{Process}_{energy}TeV_{axis}.txt`
-- `scan_axes_and_save()` — any set of axes; one file per axis (windows default to `WILSON_INTERVALS`)
-- Saved file: `#` comment header + tab-separated table (`kappa_*`, `sigma_lo`, `sigma_nnlo`, `k`, `sigma_heft_over_sm_*`)
-- `scan(..., uncertainties=True)` adds PDF/scale bands **in memory** for plotting
-- `load_scan_results()` reads `.txt`; legacy `.json` (v1/v2) still supported
+```python
+from vhh_predict.smeft_analysis import load_smeft_analysis
+from vhh_predict.smeft_core import predict, scan
+from vhh_predict.smeft_scan_io import scan_and_save
 
-### Plot styling (`vhh_predict/plot_style.py`)
+analysis = load_smeft_analysis("ZHH", 14.0)
+p = predict(analysis, {"phiW": -0.2})
+scan_data, path = scan_and_save(analysis, "phiW", vmin=-1, vmax=1, save=True)
+```
 
-Notebook §1 exposes `SIGMA_INSET`, `LEGEND_LOC`, `INSET_LOC` (via `plot_style_with_layout`).
-Lower two-panel subplots (K, σ_HEFT/σ_SM) never show a legend.
+## Notebooks
 
-`PlotStyle` dataclass bundles typography, figure size, legend corner, inset corner,
-x-axis padding, and save DPI. Pass `style=PLOT_STYLE` to any plot function.
+### `vhh_prediction_HEFT.ipynb`
 
-| Field | Default | Role |
-|-------|---------|------|
-| `legend_h`, `legend_v` | `right`, `lower` | Legend corner |
-| `inset_h`, `inset_v` | `left`, `upper` | Inset corner (`inset_h=None` hides inset) |
-| `inset_x_fraction` | `0.01` | Auto inset zoom = fraction of x-span |
-| `inset_scale` | `2.0` | Inset box size multiplier |
-| `x_pad_frac` | `0.04` | Margin on plot x-limits |
-| `save_dpi` | `300` | PNG resolution |
+Independent HEFT workflow. Setup checks `data/HEFT/`. Sections §1–§5 as before.
 
-Helpers: `default_plot_title(process, energy_tev)`, `scan_plot_filename_stem(...)`.
+### `vhh_prediction_SMEFT.ipynb`
 
-### Plot helpers (`vhh_predict/plots.py`)
+Independent SMEFT workflow. Setup checks `data/SMEFT/`. Uses `WCS` dict instead of `KAPPA` tuple. Scan outputs under `Results/Points/SMEFT/`, plots under `Results/Plots/SMEFT/`.
 
-All accept optional `style=PlotStyle(...)`, `xmin`/`xmax` (scan window), `sigma_inset`, `sigma_inset_xlim`.
-
-| Function | Use |
-|----------|-----|
-| `plot_sigma_only` | Single panel σ_NNLO |
-| `plot_sigma_lo_only` | Single panel σ_LO |
-| `plot_kfactor_only` | Single panel K |
-| `plot_enhancement_only` | Single panel σ_HEFT/σ_SM (LO or NNLO) |
-| `plot_sigma_nnlo_and_kfactor` | Two panel: σ_NNLO + K |
-| `plot_sigma_nnlo_and_enhancement_nnlo` | Two panel: σ_NNLO + σ_HEFT/σ_SM (NNLO) |
-| `plot_sm_enhancement` | Legacy two-panel LO+NNLO enhancement (not used in notebook) |
-
-Enhancement plots read `sigma_heft_over_sm_*` from scan data.
-
-## Notebook sections (`vhh_prediction.ipynb`)
-
-1. **Configuration** — `PROCESS`, `ENERGY_TEV`, output flags, `SIGMA_INSET` (`PLOT_STYLE = DEFAULT_PLOT_STYLE`)
-2. **Spot check** — `KAPPA` for `spot_check_table()` only (independent of scans)
-3. **Scan and plots** — `FIXED_KAPPA`, `scan_axis`, `scan_and_save(..., fixed_kappa=FIXED_KAPPA)`, then both two-panel figures
-4. **Batch scan** — `FIXED_KAPPA`, `scan_axes_and_save(BATCH_SCAN_AXES, ...)` → one `.txt` per axis (no plots)
-5. **Wilson-coefficient benchmark tables** — all channels + LaTeX → `Results/Tables/wilson_tables.tex`
-
-§3 scan and plots run together (no second scan, no sim overlay on scans).
+Neither notebook depends on the other. Both import shared plot helpers from `vhh_predict.plots`.
 
 ## Development notes
 
-- Run notebook from **repo root**; the Setup cell verifies `data/` and `vhh_predict/` exist under the cwd (raises with a clear message otherwise) and adds `.` to `sys.path`.
-- Install: `pip install -e ".[notebook]"` (see `pyproject.toml`).
-- `requirements.txt` is a flat alternative to the pyproject extras.
-- Do not commit generated `Results/Plots/*.png`, `Results/Tables/*.tex` unless intentional.
-- `Results/Points/` may be committed for published scan grids.
-- HEFT coefficients do not depend on m_h in code; tables label m_h = 125 GeV only.
-- New simulation points: `.out` files under `data/.../Simulation/` with existing filename convention.
+- Run notebooks from **repo root**; Setup cells verify expected `data/{HEFT|SMEFT}/` exists.
+- Install: `pip install -e ".[notebook]"`.
+- Regenerate SMEFT bundle: `python scripts/build_smeft_package_data.py --repo-root <main-repo>`.
+- `*_analysis_A.txt` / `*_analysis_B.txt` are human reference only.
+- HEFT simulation: κ filenames. SMEFT simulation: `cH*` / `cth` / `chust` filenames.
+- Do not commit generated `Results/Plots/*.png` unless intentional.
 
 ## Packaging (`pyproject.toml`)
 
-- Defines package `vhh-predict`, Python ≥3.10, dependencies (numpy, matplotlib, pandas).
-- Optional `[notebook]` extra: jupyter, ipykernel.
-- `pip install -e ".[notebook]"` installs the package in editable mode from the repo.
+- Package `vhh-predict`, Python ≥3.10.
 - `[tool.setuptools.data-files]` bundles `data/**/*` for non-editable installs.

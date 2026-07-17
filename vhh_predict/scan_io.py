@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -18,6 +18,13 @@ SCAN_VALUE_KEYS = (
     "k",
     "sigma_heft_over_sm_lo",
     "sigma_heft_over_sm_nnlo",
+    # PDF+αs (symmetric) and scale envelope (up / down)
+    "sigma_lo_pdfas",
+    "sigma_lo_sup",
+    "sigma_lo_inf",
+    "sigma_nnlo_pdfas",
+    "sigma_nnlo_sup",
+    "sigma_nnlo_inf",
 )
 
 
@@ -48,14 +55,14 @@ def scan_and_save(
     """Scan one κ component and optionally save σ_LO, σ_NNLO, K, σ_HEFT/σ_SM.
 
     Returns ``(scan_data, path)``. The saved ``.txt`` is a comment header plus a
-    tab-separated table (scanned κ and five physics columns). Uncertainty bands
-    are not written to disk.
+    tab-separated table including PDF+αs and scale uncertainties on σ_LO / σ_NNLO.
 
-    Set ``uncertainties=True`` if you need PDF/scale bands for plotting (in
-    memory only).
+    When ``save=True``, uncertainties are always computed and written. Pass
+    ``uncertainties=True`` explicitly if you need bands in memory without saving.
     """
     from .core import resolve_scan_axis, scan
 
+    need_unc = bool(uncertainties or save)
     data = scan(
         analysis,
         axis,
@@ -63,7 +70,7 @@ def scan_and_save(
         vmax=vmax,
         n_points=n_points,
         fixed_kappa=fixed_kappa,
-        uncertainties=uncertainties,
+        uncertainties=need_unc,
     )
     _, x_key = resolve_scan_axis(analysis.process, axis)
     out_path = path or scan_points_path(analysis.process, analysis.energy_tev, x_key)
@@ -112,9 +119,10 @@ def scan_axes_and_save(
     save: bool = True,
     uncertainties: bool = False,
 ) -> Dict[str, Tuple[ArrayDict, Path]]:
-    """Run ``scan_and_save`` for each axis in *axes*.
+    """Run independent **1D** ``scan_and_save`` for each axis (others fixed).
 
-    Unspecified windows default to ``WILSON_INTERVALS`` from the benchmark tables.
+    For a simultaneous multi-axis grid, use ``scan_grid_and_save`` instead.
+    Unspecified windows default to ``WILSON_INTERVALS``.
     Returns ``{scan_x_key: (scan_data, path)}`` in the order of *axes*.
     """
     from .core import resolve_scan_axis, scan_axes
@@ -143,6 +151,77 @@ def scan_axes_and_save(
     return results
 
 
+def scan_grid_points_path(
+    process: str,
+    energy_tev: float,
+    axes: Sequence[str],
+    *,
+    root: Optional[Path] = None,
+) -> Path:
+    """``Results/Points/{Process}_{energy}TeV_{axis1}_x_{axis2}_….txt``."""
+    from .core import resolve_scan_axis
+
+    keys = [resolve_scan_axis(process, a)[1] for a in axes]
+    name = f"{process}_{float(energy_tev):g}TeV_{'_x_'.join(keys)}.txt"
+    return (root or points_dir()) / name
+
+
+def scan_grid_and_save(
+    analysis: VHHAnalysis,
+    axes: Sequence[str],
+    *,
+    windows: Optional[Dict[str, Tuple[float, float]]] = None,
+    n_points: Union[int, Dict[str, int]] = 40,
+    fixed_kappa: Optional[Tuple[float, ...]] = None,
+    path: Optional[Path] = None,
+    save: bool = True,
+    uncertainties: bool = False,
+) -> Tuple[ArrayDict, Path]:
+    """Scan *axes* **simultaneously** on a Cartesian grid and optionally save one ``.txt``.
+
+    Non-scanned κ stay at *fixed_kappa*. Default *n_points* is 40 per axis
+    (e.g. 2 axes → 1600 points). When ``save=True``, σ PDF+αs / scale columns
+    are always computed and written. Returns ``(scan_data, path)``.
+    """
+    from .core import _scan_base_kappa, resolve_scan_axis, scan_grid
+
+    if not axes:
+        raise ValueError("scan_grid_and_save requires at least one axis")
+
+    need_unc = bool(uncertainties or save)
+    data = scan_grid(
+        analysis,
+        axes,
+        windows=windows,
+        n_points=n_points,
+        fixed_kappa=fixed_kappa,
+        uncertainties=need_unc,
+    )
+    out_path = path or scan_grid_points_path(analysis.process, analysis.energy_tev, axes)
+    if save:
+        axis_keys = [resolve_scan_axis(analysis.process, a)[1] for a in axes]
+        wins: Dict[str, Tuple[float, float]] = {}
+        for axis, key in zip(axes, axis_keys):
+            wins[key] = _scan_window_for_axis(axis, windows)
+        n_map: Dict[str, int] = {}
+        for axis, key in zip(axes, axis_keys):
+            if isinstance(n_points, int):
+                n_map[key] = n_points
+            else:
+                n_map[key] = int(n_points.get(axis, n_points.get(key, 40)))
+        kappa_used = tuple(_scan_base_kappa(analysis, fixed_kappa))
+        _write_grid_scan_file(
+            out_path,
+            analysis=analysis,
+            axis_keys=axis_keys,
+            windows=wins,
+            n_points=n_map,
+            fixed_kappa=kappa_used,
+            data=data,
+        )
+    return data, out_path
+
+
 def load_scan_results(path: Path) -> Dict[str, Any]:
     """Load a scan ``.txt`` (or legacy ``.json``); array values are numpy ndarrays."""
     path = Path(path)
@@ -159,6 +238,38 @@ def _slim_scan_payload(
     for key in SCAN_VALUE_KEYS:
         slim[key] = data[key]
     return slim
+
+
+def _write_grid_scan_file(
+    path: Path,
+    *,
+    analysis: VHHAnalysis,
+    axis_keys: Sequence[str],
+    windows: Dict[str, Tuple[float, float]],
+    n_points: Dict[str, int],
+    fixed_kappa: Tuple[float, ...],
+    data: ArrayDict,
+) -> Path:
+    columns = [*axis_keys, *SCAN_VALUE_KEYS]
+    rows = np.column_stack([np.asarray(data[col], dtype=float) for col in columns])
+    win_str = "; ".join(f"{k}=[{windows[k][0]:g},{windows[k][1]:g}]" for k in axis_keys)
+    n_str = ",".join(f"{k}:{n_points[k]}" for k in axis_keys)
+    header_lines = [
+        "# VHH-NNLO multi-axis scan points",
+        f"# process: {analysis.process}",
+        f"# energy_tev: {float(analysis.energy_tev):g}",
+        f"# scan_axes: {','.join(axis_keys)}",
+        f"# windows: {win_str}",
+        f"# n_points: {n_str}",
+        f"# fixed_kappa: {','.join(f'{float(k):g}' for k in fixed_kappa)}",
+        "#",
+        "\t".join(columns),
+    ]
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body_lines = ["\t".join(f"{float(x):.10g}" for x in row) for row in rows]
+    path.write_text("\n".join(header_lines) + "\n" + "\n".join(body_lines) + "\n", encoding="utf-8")
+    return path
 
 
 def _write_scan_file(

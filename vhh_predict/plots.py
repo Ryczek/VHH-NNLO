@@ -16,7 +16,9 @@ from .plot_style import (
     DEFAULT_PLOT_STYLE,
     PlotStyle,
 )
+from .smeft_operators import SMEFT_WC_LATEX
 
+# HEFT κ + SMEFT Wilson-coefficient axes (shared plots for both notebooks)
 X_LABELS = {
     "kappa_lambda": r"$\kappa_{\lambda}$",
     "kappa_w": r"$\kappa_{W}$",
@@ -24,7 +26,29 @@ X_LABELS = {
     "kappa_2w": r"$\kappa_{2W}$",
     "kappa_2z": r"$\kappa_{2Z}$",
     "kappa_t": r"$\kappa_{t}$",
+    **{k: f"${v}$" for k, v in SMEFT_WC_LATEX.items()},
 }
+
+_SCAN_VALUE_KEYS = frozenset(
+    {
+        "sigma_lo",
+        "sigma_nnlo",
+        "k",
+        "sigma_heft_over_sm_lo",
+        "sigma_heft_over_sm_nnlo",
+        "sigma_smeft_over_sm_lo",
+        "sigma_smeft_over_sm_nnlo",
+        "sigma_lo_pdfas",
+        "sigma_lo_inf",
+        "sigma_lo_sup",
+        "sigma_nnlo_pdfas",
+        "sigma_nnlo_inf",
+        "sigma_nnlo_sup",
+        "k_pdfas",
+        "k_inf",
+        "k_sup",
+    }
+)
 
 
 def _style(style: Optional[PlotStyle]) -> PlotStyle:
@@ -92,17 +116,14 @@ def _k_ylim_from_scan(scan: Dict[str, np.ndarray], *, show_uncertainty: bool) ->
 
 
 def _infer_x_key(scan: Dict[str, np.ndarray]) -> str:
-    for key in (
-        "kappa_lambda",
-        "kappa_w",
-        "kappa_z",
-        "kappa_2w",
-        "kappa_2z",
-        "kappa_t",
-    ):
+    for key in X_LABELS:
         if key in scan:
             return key
-    raise KeyError("Could not infer scan x-axis key")
+    # Fallback: first non-value array column
+    for key in scan:
+        if key not in _SCAN_VALUE_KEYS and hasattr(scan[key], "__len__"):
+            return key
+    raise KeyError(f"Could not infer scan x-axis key from {sorted(scan)}")
 
 
 def _scan_xlim(
@@ -138,17 +159,15 @@ def _overlay_simulation(ax, x: np.ndarray, y: np.ndarray, *, label: str = "simul
     )
 
 
-def _inset_connection_corners(inset_h: str, inset_v: str) -> tuple[tuple[float, float], tuple[float, float]]:
-    """Data-corner of zoom box and corresponding inset-axes corner for connector lines."""
-    if inset_h == "left" and inset_v == "upper":
-        return (0.0, 1.0), (1.0, 0.0)
-    if inset_h == "left" and inset_v == "lower":
-        return (0.0, 0.0), (1.0, 1.0)
-    if inset_h == "right" and inset_v == "upper":
-        return (1.0, 1.0), (0.0, 0.0)
-    if inset_h == "right" and inset_v == "lower":
-        return (1.0, 0.0), (0.0, 1.0)
-    return (0.0, 1.0), (1.0, 0.0)
+def _inset_connector_ys(inset_v: str, ylo_z: float, yhi_z: float) -> tuple[float, float]:
+    """Y on the zoom box (data) and on the inset axes (0–1) for connector lines.
+
+    Upper inset → from top of zoom box to lower edge of inset.
+    Lower inset → from bottom of zoom box to upper edge of inset.
+    """
+    if inset_v == "lower":
+        return ylo_z, 1.0
+    return yhi_z, 0.0
 
 
 def _add_sigma_inset(
@@ -214,15 +233,14 @@ def _add_sigma_inset(
         Rectangle((xlo, ylo_z), xhi - xlo, yhi_z - ylo_z, fill=False, transform=ax.transData, **line_kw)
     )
     fig = ax.figure
-    data_corner, inset_corner = _inset_connection_corners(style.inset_h, style.inset_v)
-    for x_corner, inset_x in ((xlo, inset_corner[0]), (xhi, inset_corner[0])):
-        y_data = yhi_z if data_corner[1] > 0.5 else ylo_z
-        y_inset = inset_corner[1]
+    y_data, y_inset = _inset_connector_ys(style.inset_v, ylo_z, yhi_z)
+    # Two connectors: left→left and right→right on the facing edge of the inset
+    for x_data, x_inset in ((xlo, 0.0), (xhi, 1.0)):
         fig.add_artist(
             ConnectionPatch(
-                xyA=(x_corner, y_data),
+                xyA=(x_data, y_data),
                 coordsA=ax.transData,
-                xyB=(inset_x, y_inset),
+                xyB=(x_inset, y_inset),
                 coordsB=axins.transAxes,
                 **line_kw,
             )
