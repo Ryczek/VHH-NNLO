@@ -38,7 +38,7 @@ def smeft_scan_points_path(
     root: Optional[Path] = None,
 ) -> Path:
     name = f"{process}_{float(energy_tev):g}TeV_{scan_x_key}.txt"
-    return (root or points_dir()) / "SMEFT" / name
+    return (root or points_dir("SMEFT")) / name
 
 
 def scan_and_save(
@@ -124,7 +124,7 @@ def scan_grid_points_path(
 
     keys = [resolve_scan_axis(process, a)[1] for a in axes]
     name = f"{process}_{float(energy_tev):g}TeV_{'_x_'.join(keys)}.txt"
-    return (root or points_dir()) / "SMEFT" / name
+    return (root or points_dir("SMEFT")) / name
 
 
 def scan_grid_and_save(

@@ -151,12 +151,9 @@ VHH-NNLO/
 │       ├── {Process}_{energy}_analysis_B.txt
 │       └── Simulation/*.out
 └── Results/                    # notebook output (created on first run)
-    ├── Points/                 # HEFT scan tables
-    │   └── SMEFT/              # SMEFT scan tables
-    ├── Plots/
-    │   └── SMEFT/
-    └── Tables/
-        └── SMEFT/
+    ├── Points/{HEFT|SMEFT}/    # scan tables
+    ├── Plots/{HEFT|SMEFT}/     # plot PNGs
+    └── Tables/{HEFT|SMEFT}/    # LaTeX tables
 ```
 
 `Process` is `WplusHH`, `WminusHH`, or `ZHH`. Energies use folder names `13_6TeV` and `14_0TeV`.

@@ -47,9 +47,9 @@ VHH-NNLO/
 │       ├── {Process}_{energy}_analysis_B.txt
 │       └── Simulation/*.out
 └── Results/
-    ├── Points/ (+ SMEFT/)
-    ├── Plots/ (+ SMEFT/)
-    └── Tables/ (+ SMEFT/)
+    ├── Points/{HEFT|SMEFT}/
+    ├── Plots/{HEFT|SMEFT}/
+    └── Tables/{HEFT|SMEFT}/
 ```
 
 Path resolution:
@@ -58,6 +58,7 @@ Path resolution:
 - `heft_data_root()` = `package_root() / "data" / "HEFT"`
 - `smeft_data_root()` = `package_root() / "data" / "SMEFT"`
 - `data_root(framework)` accepts `"HEFT"` or `"SMEFT"`
+- `points_dir` / `plots_dir` / `tables_dir` take `framework` → `Results/{…}/{HEFT|SMEFT}/`
 
 ## HEFT physics / API
 
@@ -144,11 +145,11 @@ scan_data, path = scan_and_save(analysis, "phiW", vmin=-1, vmax=1, save=True)
 
 ### `vhh_prediction_HEFT.ipynb`
 
-Independent HEFT workflow. Setup checks `data/HEFT/`. Sections §1–§5 as before.
+Independent HEFT workflow. Setup checks `data/HEFT/`. Sections §1–§5 as before. Outputs under `Results/{Points,Plots,Tables}/HEFT/`.
 
 ### `vhh_prediction_SMEFT.ipynb`
 
-Independent SMEFT workflow. Setup checks `data/SMEFT/`. Uses `WCS` dict instead of `KAPPA` tuple. Scan outputs under `Results/Points/SMEFT/`, plots under `Results/Plots/SMEFT/`.
+Independent SMEFT workflow. Setup checks `data/SMEFT/`. Uses `WCS` dict instead of `KAPPA` tuple. Outputs under `Results/{Points,Plots,Tables}/SMEFT/`.
 
 Neither notebook depends on the other. Both import shared plot helpers from `vhh_predict.plots`.
 
@@ -159,7 +160,7 @@ Neither notebook depends on the other. Both import shared plot helpers from `vhh
 - Regenerate SMEFT bundle: `python scripts/build_smeft_package_data.py --repo-root <main-repo>`.
 - `*_analysis_A.txt` / `*_analysis_B.txt` are human reference only.
 - HEFT simulation: κ filenames. SMEFT simulation: `cH*` / `cth` / `chust` filenames.
-- Do not commit generated `Results/Plots/*.png` unless intentional.
+- Do not commit generated `Results/Plots/{HEFT|SMEFT}/*.png` unless intentional.
 
 ## Packaging (`pyproject.toml`)
 

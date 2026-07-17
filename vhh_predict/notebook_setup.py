@@ -64,8 +64,8 @@ def setup_heft(root: Path | None = None) -> Dict[str, Any]:
     )
     from vhh_predict.tables import KAPPA_PLAIN, ZHH_TABLE_GROUPS
 
-    plots = plots_dir()
-    tables = tables_dir()
+    plots = plots_dir("HEFT")
+    tables = tables_dir("HEFT")
     plots.mkdir(parents=True, exist_ok=True)
     tables.mkdir(parents=True, exist_ok=True)
 
@@ -133,8 +133,8 @@ def setup_smeft(root: Path | None = None) -> Dict[str, Any]:
         latex_wc_interval_table,
     )
 
-    plots = plots_dir() / "SMEFT"
-    tables = tables_dir() / "SMEFT"
+    plots = plots_dir("SMEFT")
+    tables = tables_dir("SMEFT")
     plots.mkdir(parents=True, exist_ok=True)
     tables.mkdir(parents=True, exist_ok=True)
 

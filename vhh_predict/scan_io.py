@@ -1,4 +1,4 @@
-"""κ-scan: evaluate and save point tables under ``Results/Points/``."""
+"""κ-scan: evaluate and save point tables under ``Results/Points/HEFT/``."""
 
 from __future__ import annotations
 
@@ -35,9 +35,9 @@ def scan_points_path(
     *,
     root: Optional[Path] = None,
 ) -> Path:
-    """``Results/Points/{Process}_{energy}TeV_{axis}.txt``."""
+    """``Results/Points/HEFT/{Process}_{energy}TeV_{axis}.txt``."""
     name = f"{process}_{float(energy_tev):g}TeV_{scan_x_key}.txt"
-    return (root or points_dir()) / name
+    return (root or points_dir("HEFT")) / name
 
 
 def scan_and_save(
@@ -158,12 +158,12 @@ def scan_grid_points_path(
     *,
     root: Optional[Path] = None,
 ) -> Path:
-    """``Results/Points/{Process}_{energy}TeV_{axis1}_x_{axis2}_….txt``."""
+    """``Results/Points/HEFT/{Process}_{energy}TeV_{axis1}_x_{axis2}_….txt``."""
     from .core import resolve_scan_axis
 
     keys = [resolve_scan_axis(process, a)[1] for a in axes]
     name = f"{process}_{float(energy_tev):g}TeV_{'_x_'.join(keys)}.txt"
-    return (root or points_dir()) / name
+    return (root or points_dir("HEFT")) / name
 
 
 def scan_grid_and_save(
@@ -177,7 +177,7 @@ def scan_grid_and_save(
     save: bool = True,
     uncertainties: bool = False,
 ) -> Tuple[ArrayDict, Path]:
-    """Scan *axes* **simultaneously** on a Cartesian grid and optionally save one ``.txt``.
+    """Scan *axes* **simultaneously** on a Cartesian grid; one ``.txt`` under ``Results/Points/HEFT/``.
 
     Non-scanned κ stay at *fixed_kappa*. Default *n_points* is 40 per axis
     (e.g. 2 axes → 1600 points). When ``save=True``, σ PDF+αs / scale columns
