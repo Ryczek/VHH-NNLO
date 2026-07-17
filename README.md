@@ -94,7 +94,9 @@ Linear expansion with Wilson coefficients $C_i$ in $\mathrm{TeV}^{-2}$ and $B_i$
 
 SM: all $C_i = 0$. Set **`WCS`** as a dictionary, e.g. `{"phiW": -0.2}`.
 
-**Allowed Wilson-coefficient intervals** (global fit, Ref. terHoeve:2025gey; `SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py`):
+**Allowed Wilson-coefficient intervals** (global SMEFT fit with RGE, Table E.1 of
+[ter Hoeve *et al.*, arXiv:2502.20453](https://arxiv.org/abs/2502.20453);
+code: `SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py`):
 
 | Bosonic $C_i$ [TeV$^{-2}$] | Interval |
 |----------------------------|----------|
@@ -179,5 +181,12 @@ This rebuilds `data/SMEFT/` including B coefficients, uncertainties, and simulat
 ## Citation & license
 
 Publication **in preparation** — contact the authors for a preprint reference. BibTeX will be added upon release.
+
+SMEFT Wilson-coefficient intervals used in this package are taken from:
+
+> J. ter Hoeve, L. Mantani, A. N. Rossia, J. Rojo, E. Vryonidou,
+> *Connecting scales: RGE effects in the SMEFT at the LHC and future colliders*,
+> JHEP **06** (2025) 125 [[arXiv:2502.20453](https://arxiv.org/abs/2502.20453)]
+> (linear EFT fit with RGE; Table E.1).
 
 See the repository license file (if present).

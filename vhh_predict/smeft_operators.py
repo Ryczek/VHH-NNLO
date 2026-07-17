@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Sequence, Tuple
 
-# Global-fit intervals (Ref. terHoeve:2025gey) — units TeV^{-2}.
+# Global-fit intervals from J. ter Hoeve, L. Mantani, A. N. Rossia, J. Rojo,
+# E. Vryonidou, JHEP 06 (2025) 125 [arXiv:2502.20453]
+# ("Connecting scales: RGE effects in the SMEFT at the LHC and future colliders"),
+# linear EFT fit with RGE, Table E.1 — units TeV^{-2}.
 SMEFT_WC_INTERVALS: Dict[str, Tuple[float, float]] = {
     # Bosonic
     "phi": (-15.0, 5.0),
@@ -14,7 +17,7 @@ SMEFT_WC_INTERVALS: Dict[str, Tuple[float, float]] = {
     "phiWB": (-1.5, 1.5),
     "phiD": (-2.0, 2.0),
     "phiBox": (-1.5, 1.5),
-    # Fermionic (global fit, linear EFT w/ RGE — terHoeve:2025gey Table E.1)
+    # Fermionic (Table E.1, linear EFT w/ RGE)
     "phiq3st": (-0.2, 0.05),
     "phiq1st": (-3.0, 1.0),
     "phiu": (-3.5, 1.0),

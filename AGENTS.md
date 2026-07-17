@@ -107,7 +107,9 @@ SM: all C_i = 0 (`sm_wc_values(process)`).
 
 ### WC intervals (SMEFT)
 
-`SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py` — bosonic and fermionic tables match the paper (terHoeve:2025gey global fit).
+`SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py` — bosonic and fermionic
+tables from ter Hoeve *et al.*, [arXiv:2502.20453](https://arxiv.org/abs/2502.20453)
+(linear EFT + RGE global fit, Table E.1).
 
 ### Simulation (SMEFT)
 
