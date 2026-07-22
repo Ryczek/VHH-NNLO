@@ -47,9 +47,9 @@ VHH-NNLO/
 │       ├── {Process}_{energy}_analysis_B.txt
 │       └── Simulation/*.out
 └── Results/
-    ├── Points/{HEFT|SMEFT}/
-    ├── Plots/{HEFT|SMEFT}/
-    └── Tables/{HEFT|SMEFT}/
+    ├── Points/ (+ SMEFT/)
+    ├── Plots/ (+ SMEFT/)
+    └── Tables/ (+ SMEFT/)
 ```
 
 Path resolution:
@@ -58,7 +58,6 @@ Path resolution:
 - `heft_data_root()` = `package_root() / "data" / "HEFT"`
 - `smeft_data_root()` = `package_root() / "data" / "SMEFT"`
 - `data_root(framework)` accepts `"HEFT"` or `"SMEFT"`
-- `points_dir` / `plots_dir` / `tables_dir` take `framework` → `Results/{…}/{HEFT|SMEFT}/`
 
 ## HEFT physics / API
 
@@ -108,9 +107,7 @@ SM: all C_i = 0 (`sm_wc_values(process)`).
 
 ### WC intervals (SMEFT)
 
-`SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py` — bosonic and fermionic
-tables from ter Hoeve *et al.*, [arXiv:2502.20453](https://arxiv.org/abs/2502.20453)
-(linear EFT + RGE global fit, Table E.1).
+`SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py` — bosonic and fermionic tables match the paper (terHoeve:2025gey global fit).
 
 ### Simulation (SMEFT)
 
@@ -145,11 +142,11 @@ scan_data, path = scan_and_save(analysis, "phiW", vmin=-1, vmax=1, save=True)
 
 ### `vhh_prediction_HEFT.ipynb`
 
-Independent HEFT workflow. Setup checks `data/HEFT/`. Sections §1–§5 as before. Outputs under `Results/{Points,Plots,Tables}/HEFT/`.
+Independent HEFT workflow. Setup checks `data/HEFT/`. Sections §1–§5 as before.
 
 ### `vhh_prediction_SMEFT.ipynb`
 
-Independent SMEFT workflow. Setup checks `data/SMEFT/`. Uses `WCS` dict instead of `KAPPA` tuple. Outputs under `Results/{Points,Plots,Tables}/SMEFT/`.
+Independent SMEFT workflow. Setup checks `data/SMEFT/`. Uses `WCS` dict instead of `KAPPA` tuple. Scan outputs under `Results/Points/SMEFT/`, plots under `Results/Plots/SMEFT/`.
 
 Neither notebook depends on the other. Both import shared plot helpers from `vhh_predict.plots`.
 
@@ -160,7 +157,7 @@ Neither notebook depends on the other. Both import shared plot helpers from `vhh
 - Regenerate SMEFT bundle: `python scripts/build_smeft_package_data.py --repo-root <main-repo>`.
 - `*_analysis_A.txt` / `*_analysis_B.txt` are human reference only.
 - HEFT simulation: κ filenames. SMEFT simulation: `cH*` / `cth` / `chust` filenames.
-- Do not commit generated `Results/Plots/{HEFT|SMEFT}/*.png` unless intentional.
+- Do not commit generated `Results/Plots/*.png` unless intentional.
 
 ## Packaging (`pyproject.toml`)
 

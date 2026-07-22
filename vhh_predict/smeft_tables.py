@@ -99,13 +99,12 @@ def latex_wc_interval_table() -> str:
     bosonic = ("phi", "phiW", "phiB", "phiWB", "phiD", "phiBox")
     fermionic = (
         "phiq3st",
+        "phiQ3rd",
         "phiq1st",
+        "phiQ1rd",
         "phiu",
         "phid",
         "tphi",
-        "phit",
-        "phiQ3",
-        "phiQ1rd",
     )
     lines = []
     for title, keys in (("Bosonic", bosonic), ("Fermionic", fermionic)):

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -571,105 +571,6 @@ def scan(
         kappa[idx] = float(x)
         p = predict(analysis, tuple(kappa))
         out[x_key].append(float(x))
-        out["sigma_lo"].append(p.sigma_lo)
-        out["sigma_nnlo"].append(p.sigma_nnlo)
-        out["sigma_heft_over_sm_lo"].append(sm_enhancement(analysis, tuple(kappa), "LO"))
-        out["sigma_heft_over_sm_nnlo"].append(sm_enhancement(analysis, tuple(kappa), "NNLO"))
-        out["k"].append(p.k_factor)
-        if uncertainties:
-            out["sigma_lo_pdfas"].append(p.sigma_lo_pdfas)
-            out["sigma_lo_sup"].append(p.sigma_lo_scale_up)
-            out["sigma_lo_inf"].append(p.sigma_lo_scale_down)
-            out["sigma_nnlo_pdfas"].append(p.sigma_nnlo_pdfas)
-            out["sigma_nnlo_sup"].append(p.sigma_nnlo_scale_up)
-            out["sigma_nnlo_inf"].append(p.sigma_nnlo_scale_down)
-            out["k_pdfas"].append(p.k_pdfas)
-            out["k_sup"].append(p.k_scale_up)
-            out["k_inf"].append(p.k_scale_down)
-    return {k: np.asarray(v) for k, v in out.items()}
-
-
-def scan_grid(
-    analysis: VHHAnalysis,
-    axes: Sequence[str],
-    *,
-    windows: Optional[Dict[str, Tuple[float, float]]] = None,
-    n_points: Union[int, Dict[str, int]] = 40,
-    fixed_kappa: Optional[Tuple[float, ...]] = None,
-    uncertainties: bool = False,
-) -> Dict[str, np.ndarray]:
-    """Scan several κ axes **simultaneously** on a Cartesian product grid.
-
-    Each axis is sampled on its own linspace; all combinations are evaluated.
-    Non-scanned components stay at *fixed_kappa*. Returns flat arrays of length
-    ``∏ n_i`` (one row per grid point).
-
-    *n_points* may be a single int (same for every axis) or ``{axis: n}``.
-    Windows default to ``WILSON_INTERVALS`` when omitted.
-    """
-    from .tables import WILSON_INTERVALS
-
-    if not axes:
-        raise ValueError("scan_grid requires at least one axis")
-
-    base = _scan_base_kappa(analysis, fixed_kappa)
-    resolved: List[Tuple[int, str]] = []
-    grids: List[np.ndarray] = []
-    for axis in axes:
-        idx, x_key = resolve_scan_axis(analysis.process, axis)
-        if x_key in {k for _, k in resolved}:
-            raise ValueError(f"Duplicate scan axis {x_key!r}")
-        resolved.append((idx, x_key))
-        if windows and axis in windows:
-            lo, hi = windows[axis]
-        elif x_key in WILSON_INTERVALS:
-            lo, hi = WILSON_INTERVALS[x_key]
-        elif axis in WILSON_INTERVALS:
-            lo, hi = WILSON_INTERVALS[axis]
-        else:
-            raise KeyError(f"No window for {axis!r}; pass windows={{'{axis}': (vmin, vmax)}}")
-        if isinstance(n_points, int):
-            n = n_points
-        else:
-            n = int(n_points.get(axis, n_points.get(x_key, 40)))
-        grids.append(np.linspace(float(lo), float(hi), int(n)))
-
-    mesh = np.meshgrid(*grids, indexing="ij")
-    flats = [m.ravel() for m in mesh]
-    n_tot = len(flats[0])
-
-    out: Dict[str, List[float]] = {x_key: [] for _, x_key in resolved}
-    out.update(
-        {
-            "sigma_lo": [],
-            "sigma_nnlo": [],
-            "sigma_heft_over_sm_lo": [],
-            "sigma_heft_over_sm_nnlo": [],
-            "k": [],
-        }
-    )
-    if uncertainties:
-        out.update(
-            {
-                "sigma_lo_pdfas": [],
-                "sigma_lo_sup": [],
-                "sigma_lo_inf": [],
-                "sigma_nnlo_pdfas": [],
-                "sigma_nnlo_sup": [],
-                "sigma_nnlo_inf": [],
-                "k_pdfas": [],
-                "k_sup": [],
-                "k_inf": [],
-            }
-        )
-
-    for i in range(n_tot):
-        kappa = list(base)
-        for j, (idx, x_key) in enumerate(resolved):
-            val = float(flats[j][i])
-            kappa[idx] = val
-            out[x_key].append(val)
-        p = predict(analysis, tuple(kappa))
         out["sigma_lo"].append(p.sigma_lo)
         out["sigma_nnlo"].append(p.sigma_nnlo)
         out["sigma_heft_over_sm_lo"].append(sm_enhancement(analysis, tuple(kappa), "LO"))

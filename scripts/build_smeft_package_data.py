@@ -261,21 +261,32 @@ def export_channel_energy(
     }
     (dest / "sigma_sm.json").write_text(json.dumps(sigma_payload, indent=2), encoding="utf-8")
 
-    # Simulation: copy all .out from full/ (and loop/ if no full)
+    # Simulation: copy all .out from full/ then loop/ (skip .parallel_jobs).
+    # Prefer *_Corrected.out over a plain sibling; write without "_Corrected".
     sim_dest = dest / "Simulation"
     if sim_dest.exists():
         shutil.rmtree(sim_dest)
     sim_dest.mkdir(parents=True)
-    copied = 0
+    by_dest_name: Dict[str, Path] = {}
     for sub in ("full", "loop"):
         src_root = smeft_src / sub
         if not src_root.is_dir():
             continue
         for out in sorted(src_root.rglob("*.out")):
-            target = sim_dest / out.name
-            if not target.exists():
-                shutil.copy2(out, target)
-                copied += 1
+            if ".parallel_jobs" in out.parts:
+                continue
+            dest_name = out.name.replace("_Corrected", "")
+            prev = by_dest_name.get(dest_name)
+            if prev is None:
+                by_dest_name[dest_name] = out
+                continue
+            # Prefer Corrected source when both map to the same dest name.
+            if "_Corrected" in out.name and "_Corrected" not in prev.name:
+                by_dest_name[dest_name] = out
+    copied = 0
+    for dest_name, src in sorted(by_dest_name.items()):
+        shutil.copy2(src, sim_dest / dest_name)
+        copied += 1
     print(f"  {dest.relative_to(_PKG_ROOT)}: {copied} simulation .out files")
 
 

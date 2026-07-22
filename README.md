@@ -18,8 +18,8 @@ Accompanies an **in-preparation publication** (*Precise predictions for double H
 Both notebooks share the same workflow:
 
 - **Spot check** — $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$ (HHZ for $ZHH$), $K$-factor, and enhancement over SM at any EFT point.
-- **Scan** — vary one Wilson parameter (§3), or several **simultaneously** on a Cartesian grid (§4); optional PDF/scale bands and `.txt` tables.
-- **Plot** — two-panel figures from a 1D scan: $\sigma_{\mathrm{NNLO}}+K$ and $\sigma/\sigma_{\mathrm{SM}}$.
+- **Scan** — vary one Wilson parameter; optional PDF/scale bands and `.txt` tables.
+- **Plot** — two-panel figures: $\sigma_{\mathrm{NNLO}}+K$ and $\sigma/\sigma_{\mathrm{SM}}$.
 - **Compare** — optional check against bundled simulation `.out` files (spot check only).
 - **Benchmark tables** — interval-boundary tables (HEFT $\kappa$ or SMEFT $C_i$).
 
@@ -94,9 +94,7 @@ Linear expansion with Wilson coefficients $C_i$ in $\mathrm{TeV}^{-2}$ and $B_i$
 
 SM: all $C_i = 0$. Set **`WCS`** as a dictionary, e.g. `{"phiW": -0.2}`.
 
-**Allowed Wilson-coefficient intervals** (global SMEFT fit with RGE, Table E.1 of
-[ter Hoeve *et al.*, arXiv:2502.20453](https://arxiv.org/abs/2502.20453);
-code: `SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py`):
+**Allowed Wilson-coefficient intervals** (global fit, Ref. terHoeve:2025gey; `SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py`):
 
 | Bosonic $C_i$ [TeV$^{-2}$] | Interval |
 |----------------------------|----------|
@@ -110,15 +108,14 @@ code: `SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py`):
 | Fermionic $C_i$ [TeV$^{-2}$] | Interval |
 |------------------------------|----------|
 | $C_{\varphi q}^{(3)}$ | [−0.2, 0.05] |
+| $C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}$ | [−8, 2] |
 | $C_{\varphi q}^{(1)}$ | [−3, 1] |
+| $C_{\varphi Q}^{(1)}$ | [−6.1, 30.5] |
 | $C_{\varphi u}$ | [−3.5, 1] |
 | $C_{\varphi d}$ | [−4, 4] |
 | $C_{t\varphi}$ | [−15, 5] |
-| $C_{\varphi t}$ | [−24.4, 33.9] |
-| $C_{\varphi Q}^{(3)}$ | [−7.7, 2] |
-| $C_{\varphi Q}^{(1)}$ | [−6.5, 30.5] |
 
-> **$C_{t\varphi}$ ≠ $C_{\varphi t}$:** $C_{t\varphi}$ ($\mathcal{O}_{u\varphi}$, Fortran `cth`) enters $B_{11}$; $C_{\varphi t}$ enters $B_{12}$ with $C_{\varphi Q}^{(3)}$ and $C_{\varphi Q}^{(1)}$. In this release $B_{12}$ is scanned as the combination $C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}$ (`phiQ3rd`, default window [−8, 2]).
+> **$C_{t\varphi}$ ≠ $C_{\varphi t}$:** $C_{t\varphi}$ ($\mathcal{O}_{u\varphi}$, Fortran `cth`) enters $B_{11}$; $C_{\varphi t}$ enters the $B_{12}$ combination.
 
 ---
 
@@ -151,9 +148,12 @@ VHH-NNLO/
 │       ├── {Process}_{energy}_analysis_B.txt
 │       └── Simulation/*.out
 └── Results/                    # notebook output (created on first run)
-    ├── Points/{HEFT|SMEFT}/    # scan tables
-    ├── Plots/{HEFT|SMEFT}/     # plot PNGs
-    └── Tables/{HEFT|SMEFT}/    # LaTeX tables
+    ├── Points/                 # HEFT scan tables
+    │   └── SMEFT/              # SMEFT scan tables
+    ├── Plots/
+    │   └── SMEFT/
+    └── Tables/
+        └── SMEFT/
 ```
 
 `Process` is `WplusHH`, `WminusHH`, or `ZHH`. Energies use folder names `13_6TeV` and `14_0TeV`.
@@ -178,12 +178,5 @@ This rebuilds `data/SMEFT/` including B coefficients, uncertainties, and simulat
 ## Citation & license
 
 Publication **in preparation** — contact the authors for a preprint reference. BibTeX will be added upon release.
-
-SMEFT Wilson-coefficient intervals used in this package are taken from:
-
-> J. ter Hoeve, L. Mantani, A. N. Rossia, J. Rojo, E. Vryonidou,
-> *Connecting scales: RGE effects in the SMEFT at the LHC and future colliders*,
-> JHEP **06** (2025) 125 [[arXiv:2502.20453](https://arxiv.org/abs/2502.20453)]
-> (linear EFT fit with RGE; Table E.1).
 
 See the repository license file (if present).

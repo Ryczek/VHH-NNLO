@@ -5,10 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Sequence, Tuple
 
-# Global-fit intervals from J. ter Hoeve, L. Mantani, A. N. Rossia, J. Rojo,
-# E. Vryonidou, JHEP 06 (2025) 125 [arXiv:2502.20453]
-# ("Connecting scales: RGE effects in the SMEFT at the LHC and future colliders"),
-# linear EFT fit with RGE, Table E.1 — units TeV^{-2}.
+# Global-fit intervals (Ref. terHoeve:2025gey) — units TeV^{-2}.
 SMEFT_WC_INTERVALS: Dict[str, Tuple[float, float]] = {
     # Bosonic
     "phi": (-15.0, 5.0),
@@ -17,17 +14,14 @@ SMEFT_WC_INTERVALS: Dict[str, Tuple[float, float]] = {
     "phiWB": (-1.5, 1.5),
     "phiD": (-2.0, 2.0),
     "phiBox": (-1.5, 1.5),
-    # Fermionic (Table E.1, linear EFT w/ RGE)
+    # Fermionic
     "phiq3st": (-0.2, 0.05),
+    "phiQ3rd": (-8.0, 2.0),
     "phiq1st": (-3.0, 1.0),
+    "phiQ1rd": (-6.1, 30.5),
     "phiu": (-3.5, 1.0),
     "phid": (-4.0, 4.0),
     "tphi": (-15.0, 5.0),  # C_tφ (Fortran cth); distinct from C_φt
-    "phit": (-24.4, 33.9),  # C_φt (enters B₁₂; not scanned individually in this release)
-    "phiQ3": (-7.7, 2.0),  # C_φQ^(3)
-    "phiQ1rd": (-6.5, 30.5),  # C_φQ^(1)
-    # B₁₂ scan axis only: C_φt + C_φQ^(3) − C_φQ^(1) (Fortran cHq3rd)
-    "phiQ3rd": (-8.0, 2.0),
 }
 
 SMEFT_WC_LATEX = {
@@ -42,8 +36,6 @@ SMEFT_WC_LATEX = {
     "phiB": r"C_{\varphi B}",
     "phiWB": r"C_{\varphi WB}",
     "tphi": r"C_{t\varphi}",
-    "phit": r"C_{\varphi t}",
-    "phiQ3": r"C_{\varphi Q}^{(3)}",
     "phiQ3rd": r"C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}",
     "phiQ1rd": r"C_{\varphi Q}^{(1)}",
 }
@@ -60,9 +52,6 @@ SMEFT_WC_PLAIN = {
     "phiB": "C_φB",
     "phiWB": "C_φWB",
     "tphi": "C_tφ",
-    "phit": "C_φt",
-    "phiQ3": "C_φQ^(3)",
-    "phiQ1rd": "C_φQ^(1)",
     "phiQ3rd": "C_φt+C_φQ^(3)−C_φQ^(1)",
 }
 

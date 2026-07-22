@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -403,99 +403,6 @@ def scan(
             out["k_sup"].append(p.k_scale_up)
             out["k_inf"].append(p.k_scale_down)
     # Aliases for shared plot helpers (HEFT naming)
-    out["sigma_heft_over_sm_lo"] = list(out["sigma_smeft_over_sm_lo"])
-    out["sigma_heft_over_sm_nnlo"] = list(out["sigma_smeft_over_sm_nnlo"])
-    return {k: np.asarray(v) for k, v in out.items()}
-
-
-def scan_grid(
-    analysis: SMEFTAnalysis,
-    axes: Sequence[str],
-    *,
-    windows: Optional[Dict[str, Tuple[float, float]]] = None,
-    n_points: Union[int, Dict[str, int]] = 40,
-    fixed_wcs: Optional[Dict[str, float]] = None,
-    uncertainties: bool = False,
-) -> Dict[str, np.ndarray]:
-    """Scan several Wilson coefficients **simultaneously** on a Cartesian grid.
-
-    Non-scanned WCs stay at *fixed_wcs* (default SM = all zero). Returns flat
-    arrays of length ``∏ n_i``. Windows default to ``SMEFT_WC_INTERVALS``.
-    """
-    from .smeft_operators import SMEFT_WC_INTERVALS
-
-    if not axes:
-        raise ValueError("scan_grid requires at least one axis")
-
-    base = _scan_base_wcs(analysis, fixed_wcs)
-    keys: List[str] = []
-    grids: List[np.ndarray] = []
-    for axis in axes:
-        _, x_key = resolve_scan_axis(analysis.process, axis)
-        if x_key in keys:
-            raise ValueError(f"Duplicate scan axis {x_key!r}")
-        keys.append(x_key)
-        lo, hi = (windows or {}).get(axis) or (windows or {}).get(x_key) or SMEFT_WC_INTERVALS.get(
-            x_key, SMEFT_WC_INTERVALS.get(axis, (-1.0, 1.0))
-        )
-        if isinstance(n_points, int):
-            n = n_points
-        else:
-            n = int(n_points.get(axis, n_points.get(x_key, 40)))
-        grids.append(np.linspace(float(lo), float(hi), int(n)))
-
-    mesh = np.meshgrid(*grids, indexing="ij")
-    flats = [m.ravel() for m in mesh]
-    n_tot = len(flats[0])
-
-    out: Dict[str, List[float]] = {k: [] for k in keys}
-    out.update(
-        {
-            "sigma_lo": [],
-            "sigma_nnlo": [],
-            "sigma_smeft_over_sm_lo": [],
-            "sigma_smeft_over_sm_nnlo": [],
-            "k": [],
-        }
-    )
-    if uncertainties:
-        out.update(
-            {
-                "sigma_lo_pdfas": [],
-                "sigma_lo_sup": [],
-                "sigma_lo_inf": [],
-                "sigma_nnlo_pdfas": [],
-                "sigma_nnlo_sup": [],
-                "sigma_nnlo_inf": [],
-                "k_pdfas": [],
-                "k_sup": [],
-                "k_inf": [],
-            }
-        )
-
-    for i in range(n_tot):
-        wcs = dict(base)
-        for j, x_key in enumerate(keys):
-            val = float(flats[j][i])
-            wcs[x_key] = val
-            out[x_key].append(val)
-        p = predict(analysis, wcs)
-        out["sigma_lo"].append(p.sigma_lo)
-        out["sigma_nnlo"].append(p.sigma_nnlo)
-        out["sigma_smeft_over_sm_lo"].append(sm_enhancement(analysis, wcs, "LO"))
-        out["sigma_smeft_over_sm_nnlo"].append(sm_enhancement(analysis, wcs, "NNLO"))
-        out["k"].append(p.k_factor)
-        if uncertainties:
-            out["sigma_lo_pdfas"].append(p.sigma_lo_pdfas)
-            out["sigma_lo_sup"].append(p.sigma_lo_scale_up)
-            out["sigma_lo_inf"].append(p.sigma_lo_scale_down)
-            out["sigma_nnlo_pdfas"].append(p.sigma_nnlo_pdfas)
-            out["sigma_nnlo_sup"].append(p.sigma_nnlo_scale_up)
-            out["sigma_nnlo_inf"].append(p.sigma_nnlo_scale_down)
-            out["k_pdfas"].append(p.k_pdfas)
-            out["k_sup"].append(p.k_scale_up)
-            out["k_inf"].append(p.k_scale_down)
-
     out["sigma_heft_over_sm_lo"] = list(out["sigma_smeft_over_sm_lo"])
     out["sigma_heft_over_sm_nnlo"] = list(out["sigma_smeft_over_sm_nnlo"])
     return {k: np.asarray(v) for k, v in out.items()}

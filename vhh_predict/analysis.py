@@ -67,28 +67,16 @@ def results_dir() -> Path:
     return package_root() / "Results"
 
 
-def plots_dir(framework: str = "HEFT") -> Path:
-    """``Results/Plots/{HEFT|SMEFT}/``."""
-    fw = framework.upper()
-    if fw not in FRAMEWORKS:
-        raise KeyError(f"Unknown framework: {framework} (use HEFT or SMEFT)")
-    return results_dir() / "Plots" / fw
+def plots_dir() -> Path:
+    return results_dir() / "Plots"
 
 
-def tables_dir(framework: str = "HEFT") -> Path:
-    """``Results/Tables/{HEFT|SMEFT}/``."""
-    fw = framework.upper()
-    if fw not in FRAMEWORKS:
-        raise KeyError(f"Unknown framework: {framework} (use HEFT or SMEFT)")
-    return results_dir() / "Tables" / fw
+def tables_dir() -> Path:
+    return results_dir() / "Tables"
 
 
-def points_dir(framework: str = "HEFT") -> Path:
-    """``Results/Points/{HEFT|SMEFT}/``."""
-    fw = framework.upper()
-    if fw not in FRAMEWORKS:
-        raise KeyError(f"Unknown framework: {framework} (use HEFT or SMEFT)")
-    return results_dir() / "Points" / fw
+def points_dir() -> Path:
+    return results_dir() / "Points"
 
 
 def process_data_dir(
