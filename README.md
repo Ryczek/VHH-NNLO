@@ -1,15 +1,15 @@
 # VHH-NNLO
 
-Closed-form predictions for **vector-boson-associated double-Higgs production** ($W^\pm HH$, $ZHH$) at **LO** and **NNLO QCD**, with PDF + $\alpha_s$ and scale uncertainties. The package supports two EFT frameworks:
+Closed-form predictions for **vector-boson-associated double-Higgs production** ($W^\pm HH$, $ZHH$) at **NNLO QCD**, with PDF + $\alpha_s$ and scale uncertainties. The package supports two EFT frameworks:
 
 | Framework | Expansion | Data | Notebook |
 |-----------|-----------|------|----------|
-| **HEFT** | $\sigma = \mathbf{m}(\kappa)^\top \mathbf{A}$ | `data/HEFT/` | [`vhh_prediction_HEFT.ipynb`](vhh_prediction_HEFT.ipynb) |
+| **HEFT** | $\sigma = \sum_i A_i \kappa_i^n \kappa_j^m$ | `data/HEFT/` | [`vhh_prediction_HEFT.ipynb`](vhh_prediction_HEFT.ipynb) |
 | **SMEFT** | $\sigma = \sigma_{\mathrm{SM}} + \sum_i B_i C_i$ | `data/SMEFT/` | [`vhh_prediction_SMEFT.ipynb`](vhh_prediction_SMEFT.ipynb) |
 
 Coefficients and optional simulation reference points are bundled under `data/` — no Monte Carlo or fitting step required.
 
-Accompanies an **in-preparation publication** (*Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory*). Citation to be added when the paper is public.
+Accompanies an **in-preparation publication** (*Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory*).
 
 ---
 
@@ -17,13 +17,14 @@ Accompanies an **in-preparation publication** (*Precise predictions for double H
 
 Both notebooks share the same workflow:
 
-- **Spot check** — $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$ (HHZ for $ZHH$), $K$-factor, and enhancement over SM at any EFT point.
-- **Scan** — vary one Wilson parameter; optional PDF/scale bands and `.txt` tables.
+- **Spot check** — $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$, $K$-factor, and enhancement over SM at any EFT point.
+- **Scan** — vary one Wilson parameter; optional PDF/scale bands and `.txt` tables (§3).
+- **Joint multi-axis scan** — Cartesian grid over several axes at once; one `.txt` (§4).
 - **Plot** — two-panel figures: $\sigma_{\mathrm{NNLO}}+K$ and $\sigma/\sigma_{\mathrm{SM}}$.
 - **Compare** — optional check against bundled simulation `.out` files (spot check only).
-- **Benchmark tables** — interval-boundary tables (HEFT $\kappa$ or SMEFT $C_i$).
+- **Benchmark tables** — interval-boundary tables in `.tex` (HEFT $\kappa$ or SMEFT $C_i$).
 
-Processes: `WplusHH`, `WminusHH`, `ZHH` at **13.6** or **14.0** TeV.
+Processes: `pp>W+HH`, `pp>W-HH`, `pp>ZHH` at **13.6** or **14.0** TeV.
 
 ---
 
@@ -41,15 +42,17 @@ jupyter notebook vhh_prediction_HEFT.ipynb    # HEFT (κ)
 jupyter notebook vhh_prediction_SMEFT.ipynb   # SMEFT (C_i)
 ```
 
-Run all cells top to bottom. Edit **§1** (process, flags), **§2** (EFT point), **§3** (scan + plots).
+Run all cells top to bottom. Edit **§1** (process, flags), **§2** (EFT point), **§3** (scan + plots), **§4** (joint grid scan), **§5** (benchmark tables).
 
-> Always start Jupyter from the repo root — paths to `data/HEFT/`, `data/SMEFT/`, and `Results/` are relative to it.
+> Restart the Jupyter kernel after editing `vhh_predict/` code. Start Jupyter from the repo root so `data/` and `results/` resolve correctly.
 
 ---
 
 ## HEFT ($\kappa$ framework)
 
 **Notebook:** [`vhh_prediction_HEFT.ipynb`](vhh_prediction_HEFT.ipynb)
+
+Outputs under `results/points/`, `results/plots/`, `results/tables/`.
 
 SM: all $\kappa = 1$.
 
@@ -86,15 +89,15 @@ SM: all $\kappa = 1$.
 
 **Notebook:** [`vhh_prediction_SMEFT.ipynb`](vhh_prediction_SMEFT.ipynb)
 
-Linear expansion with Wilson coefficients $C_i$ in $\mathrm{TeV}^{-2}$ and $B_i$ in $\mathrm{fb\,TeV}^2$:
+Outputs under `results/points/smeft/`, `results/plots/smeft/`, `results/tables/smeft/`.
 
 - **$W^\pm HH$:** $B_1$–$B_5$ ↔ $C_\varphi$, $C_{\varphi\square}$, $C_{\varphi D}$, $C_{\varphi q}^{(3)}$, $C_{\varphi W}$
-- **$ZHH$ LO:** $B_1$–$B_{10}$ (eq. 80 in the paper)
+- **$ZHH$ LO:** $B_1$–$B_{10}$
 - **$ZHH$ NNLO:** adds $B_{11}$ ($C_{t\varphi}$) and $B_{12}$ ($C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}$)
 
 SM: all $C_i = 0$. Set **`WCS`** as a dictionary, e.g. `{"phiW": -0.2}`.
 
-**Allowed Wilson-coefficient intervals** (global fit, Ref. terHoeve:2025gey; `SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py`):
+**Allowed Wilson-coefficient intervals** (global fit, Ref. [ter Hoeve et al., JHEP 06 (2025) 125](https://arxiv.org/abs/2502.20453), Table E.1; `SMEFT_WC_INTERVALS` in `vhh_predict/smeft_operators.py`):
 
 | Bosonic $C_i$ [TeV$^{-2}$] | Interval |
 |----------------------------|----------|
@@ -108,14 +111,16 @@ SM: all $C_i = 0$. Set **`WCS`** as a dictionary, e.g. `{"phiW": -0.2}`.
 | Fermionic $C_i$ [TeV$^{-2}$] | Interval |
 |------------------------------|----------|
 | $C_{\varphi q}^{(3)}$ | [−0.2, 0.05] |
+| $C_{\varphi t}$ | [−25, 34] |
+| $C_{\varphi Q}^{(3)}$ | [−8, 2] |
+| $C_{\varphi Q}^{(1)}$ | [−6.5, 30.5] |
 | $C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}$ | [−8, 2] |
 | $C_{\varphi q}^{(1)}$ | [−3, 1] |
-| $C_{\varphi Q}^{(1)}$ | [−6.1, 30.5] |
 | $C_{\varphi u}$ | [−3.5, 1] |
 | $C_{\varphi d}$ | [−4, 4] |
 | $C_{t\varphi}$ | [−15, 5] |
 
-> **$C_{t\varphi}$ ≠ $C_{\varphi t}$:** $C_{t\varphi}$ ($\mathcal{O}_{u\varphi}$, Fortran `cth`) enters $B_{11}$; $C_{\varphi t}$ enters the $B_{12}$ combination.
+> **$C_{t\varphi}$ ≠ $C_{\varphi t}$:** $C_{t\varphi}$ ($B_{11}$, Fortran `cth`) is distinct from $C_{\varphi t}$ (enters the $B_{12}$ combination).
 
 ---
 
@@ -127,13 +132,14 @@ VHH-NNLO/
 ├── vhh_prediction_SMEFT.ipynb  # SMEFT entry point
 ├── README.md
 ├── AGENTS.md
-├── pyproject.toml
+├── pyproject.toml              # pip install -e ".[notebook]"
 ├── scripts/
 │   └── build_smeft_package_data.py   # regenerate data/SMEFT from SMEFT_Results
 ├── vhh_predict/                # importable package
 │   ├── analysis.py             # path helpers, load_analysis() [HEFT]
-│   ├── core.py                 # HEFT predict/scan
-│   ├── smeft_*.py              # SMEFT load/predict/scan/simulation
+│   ├── core.py                 # HEFT predict / scan / scan_grid
+│   ├── scan_io.py              # HEFT scan_and_save / scan_grid_and_save
+│   ├── smeft_*.py              # SMEFT load / predict / scan / simulation
 │   └── ...
 ├── data/
 │   ├── HEFT/{Process}/{13_6TeV|14_0TeV}/
@@ -147,13 +153,13 @@ VHH-NNLO/
 │       ├── sigma_sm.json
 │       ├── {Process}_{energy}_analysis_B.txt
 │       └── Simulation/*.out
-└── Results/                    # notebook output (created on first run)
-    ├── Points/                 # HEFT scan tables
-    │   └── SMEFT/              # SMEFT scan tables
-    ├── Plots/
-    │   └── SMEFT/
-    └── Tables/
-        └── SMEFT/
+└── results/                    # notebook output (created on first run)
+    ├── points/                 # HEFT scan tables
+    │   └── smeft/              # SMEFT scan tables
+    ├── plots/
+    │   └── smeft/
+    └── tables/
+        └── smeft/
 ```
 
 `Process` is `WplusHH`, `WminusHH`, or `ZHH`. Energies use folder names `13_6TeV` and `14_0TeV`.
@@ -162,21 +168,6 @@ Human-readable `*_analysis_A.txt` / `*_analysis_B.txt` files are reference only;
 
 ---
 
-## Regenerating SMEFT data
-
-From the main analysis repository (with `SMEFT_Results/` present):
-
-```bash
-cd VHH-NNLO
-python scripts/build_smeft_package_data.py --repo-root /path/to/pphhV
-```
-
-This rebuilds `data/SMEFT/` including B coefficients, uncertainties, and simulation `.out` files from `full/` scans.
-
----
-
 ## Citation & license
 
-Publication **in preparation** — contact the authors for a preprint reference. BibTeX will be added upon release.
-
-See the repository license file (if present).
+Publication **in preparation** — contact the authors for a preprint reference.

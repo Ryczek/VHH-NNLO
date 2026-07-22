@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+from itertools import product
 
 from .smeft_analysis import SMEFTAnalysis
 from .smeft_operators import (
+    SMEFT_WC_INTERVALS,
     SMEFT_WC_PLAIN,
     normalize_wc_dict,
     scan_axes,
@@ -403,6 +405,96 @@ def scan(
             out["k_sup"].append(p.k_scale_up)
             out["k_inf"].append(p.k_scale_down)
     # Aliases for shared plot helpers (HEFT naming)
+    out["sigma_heft_over_sm_lo"] = list(out["sigma_smeft_over_sm_lo"])
+    out["sigma_heft_over_sm_nnlo"] = list(out["sigma_smeft_over_sm_nnlo"])
+    return {k: np.asarray(v) for k, v in out.items()}
+
+
+def scan_grid(
+    analysis: SMEFTAnalysis,
+    axes: Sequence[str],
+    *,
+    windows: Optional[Dict[str, Tuple[float, float]]] = None,
+    n_points: int = 40,
+    fixed_wcs: Optional[Dict[str, float]] = None,
+    uncertainties: bool = False,
+) -> Dict[str, np.ndarray]:
+    """Scan several WC axes **simultaneously** on a Cartesian product grid.
+
+    Non-scanned $C_i$ stay at *fixed_wcs* (defaults SM). Default *n_points* is
+    40 per axis (e.g. 2 axes → 1600 evaluations).
+    """
+    if not axes:
+        raise ValueError("scan_grid requires at least one axis")
+
+    base = _scan_base_wcs(analysis, fixed_wcs)
+    resolved: List[Tuple[str, float, float]] = []
+    seen: set[str] = set()
+    for axis in axes:
+        _, x_key = resolve_scan_axis(analysis.process, axis)
+        if x_key in seen:
+            raise ValueError(f"Duplicate scan axis {x_key!r}")
+        seen.add(x_key)
+        if windows and axis in windows:
+            vmin, vmax = windows[axis]
+        elif x_key in SMEFT_WC_INTERVALS:
+            vmin, vmax = SMEFT_WC_INTERVALS[x_key]
+        else:
+            raise KeyError(
+                f"No scan window for {axis!r}; pass windows={{'{axis}': (vmin, vmax)}}"
+            )
+        resolved.append((x_key, float(vmin), float(vmax)))
+
+    grids = [np.linspace(vmin, vmax, n_points) for _, vmin, vmax in resolved]
+    x_keys = [x_key for x_key, _, _ in resolved]
+
+    out: Dict[str, List[float]] = {k: [] for k in x_keys}
+    out.update(
+        {
+            "sigma_lo": [],
+            "sigma_nnlo": [],
+            "sigma_smeft_over_sm_lo": [],
+            "sigma_smeft_over_sm_nnlo": [],
+            "k": [],
+        }
+    )
+    if uncertainties:
+        out.update(
+            {
+                "sigma_lo_pdfas": [],
+                "sigma_lo_sup": [],
+                "sigma_lo_inf": [],
+                "sigma_nnlo_pdfas": [],
+                "sigma_nnlo_sup": [],
+                "sigma_nnlo_inf": [],
+                "k_pdfas": [],
+                "k_sup": [],
+                "k_inf": [],
+            }
+        )
+
+    for vals in product(*grids):
+        wcs = dict(base)
+        for x_key, val in zip(x_keys, vals):
+            wcs[x_key] = float(val)
+            out[x_key].append(float(val))
+        p = predict(analysis, wcs)
+        out["sigma_lo"].append(p.sigma_lo)
+        out["sigma_nnlo"].append(p.sigma_nnlo)
+        out["sigma_smeft_over_sm_lo"].append(sm_enhancement(analysis, wcs, "LO"))
+        out["sigma_smeft_over_sm_nnlo"].append(sm_enhancement(analysis, wcs, "NNLO"))
+        out["k"].append(p.k_factor)
+        if uncertainties:
+            out["sigma_lo_pdfas"].append(p.sigma_lo_pdfas)
+            out["sigma_lo_sup"].append(p.sigma_lo_scale_up)
+            out["sigma_lo_inf"].append(p.sigma_lo_scale_down)
+            out["sigma_nnlo_pdfas"].append(p.sigma_nnlo_pdfas)
+            out["sigma_nnlo_sup"].append(p.sigma_nnlo_scale_up)
+            out["sigma_nnlo_inf"].append(p.sigma_nnlo_scale_down)
+            out["k_pdfas"].append(p.k_pdfas)
+            out["k_sup"].append(p.k_scale_up)
+            out["k_inf"].append(p.k_scale_down)
+
     out["sigma_heft_over_sm_lo"] = list(out["sigma_smeft_over_sm_lo"])
     out["sigma_heft_over_sm_nnlo"] = list(out["sigma_smeft_over_sm_nnlo"])
     return {k: np.asarray(v) for k, v in out.items()}

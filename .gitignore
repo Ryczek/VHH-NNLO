@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .DS_Store
-Results/Plots/*.png
-Results/Plots/*.pdf
-Results/Plots/*.svg
-Results/Tables/*.tex
+results/plots/**/*.png
+results/plots/**/*.pdf
+results/plots/**/*.svg
+results/tables/**/*.tex

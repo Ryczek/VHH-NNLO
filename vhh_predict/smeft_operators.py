@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Sequence, Tuple
 
-# Global-fit intervals (Ref. terHoeve:2025gey) — units TeV^{-2}.
+# Global-fit intervals (Ref. terHoeve:2025gey, Table E.1 linear+RGE, rounded) — TeV^{-2}.
 SMEFT_WC_INTERVALS: Dict[str, Tuple[float, float]] = {
     # Bosonic
     "phi": (-15.0, 5.0),
@@ -14,11 +14,13 @@ SMEFT_WC_INTERVALS: Dict[str, Tuple[float, float]] = {
     "phiWB": (-1.5, 1.5),
     "phiD": (-2.0, 2.0),
     "phiBox": (-1.5, 1.5),
-    # Fermionic
+    # Fermionic (individuals + B₁₂ combination used in ZHH NNLO)
     "phiq3st": (-0.2, 0.05),
-    "phiQ3rd": (-8.0, 2.0),
+    "phit": (-25.0, 34.0),  # C_φt; distinct from C_tφ (tphi)
+    "phiQ3": (-8.0, 2.0),  # C_φQ^(3)
+    "phiQ1rd": (-6.5, 30.5),  # C_φQ^(1) (paper: c_φQ^(-))
+    "phiQ3rd": (-8.0, 2.0),  # B₁₂: C_φt+C_φQ^(3)−C_φQ^(1)
     "phiq1st": (-3.0, 1.0),
-    "phiQ1rd": (-6.1, 30.5),
     "phiu": (-3.5, 1.0),
     "phid": (-4.0, 4.0),
     "tphi": (-15.0, 5.0),  # C_tφ (Fortran cth); distinct from C_φt
@@ -36,6 +38,8 @@ SMEFT_WC_LATEX = {
     "phiB": r"C_{\varphi B}",
     "phiWB": r"C_{\varphi WB}",
     "tphi": r"C_{t\varphi}",
+    "phit": r"C_{\varphi t}",
+    "phiQ3": r"C_{\varphi Q}^{(3)}",
     "phiQ3rd": r"C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}",
     "phiQ1rd": r"C_{\varphi Q}^{(1)}",
 }
@@ -52,7 +56,10 @@ SMEFT_WC_PLAIN = {
     "phiB": "C_φB",
     "phiWB": "C_φWB",
     "tphi": "C_tφ",
+    "phit": "C_φt",
+    "phiQ3": "C_φQ^(3)",
     "phiQ3rd": "C_φt+C_φQ^(3)−C_φQ^(1)",
+    "phiQ1rd": "C_φQ^(1)",
 }
 
 W_SCAN_WC_KEYS: Tuple[str, ...] = ("phi", "phiBox", "phiD", "phiq3st", "phiW")

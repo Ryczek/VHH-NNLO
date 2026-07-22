@@ -1,4 +1,4 @@
-"""κ-scan: evaluate and save point tables under ``Results/Points/``."""
+"""κ-scan: evaluate and save point tables under ``results/points/``."""
 
 from __future__ import annotations
 
@@ -28,8 +28,23 @@ def scan_points_path(
     *,
     root: Optional[Path] = None,
 ) -> Path:
-    """``Results/Points/{Process}_{energy}TeV_{axis}.txt``."""
+    """``results/points/{Process}_{energy}TeV_{axis}.txt``."""
     name = f"{process}_{float(energy_tev):g}TeV_{scan_x_key}.txt"
+    return (root or points_dir()) / name
+
+
+def scan_grid_points_path(
+    process: str,
+    energy_tev: float,
+    axes: Sequence[str],
+    *,
+    root: Optional[Path] = None,
+) -> Path:
+    """``results/points/{Process}_{energy}TeV_{axis1}_x_{axis2}_….txt``."""
+    from .core import resolve_scan_axis
+
+    keys = [resolve_scan_axis(process, a)[1] for a in axes]
+    name = f"{process}_{float(energy_tev):g}TeV_{'_x_'.join(keys)}.txt"
     return (root or points_dir()) / name
 
 
@@ -112,7 +127,7 @@ def scan_axes_and_save(
     save: bool = True,
     uncertainties: bool = False,
 ) -> Dict[str, Tuple[ArrayDict, Path]]:
-    """Run ``scan_and_save`` for each axis in *axes*.
+    """Run ``scan_and_save`` for each axis in *axes* (independent 1D scans).
 
     Unspecified windows default to ``WILSON_INTERVALS`` from the benchmark tables.
     Returns ``{scan_x_key: (scan_data, path)}`` in the order of *axes*.
@@ -141,6 +156,61 @@ def scan_axes_and_save(
         _, x_key = resolve_scan_axis(analysis.process, axis)
         results[x_key] = (data, path)
     return results
+
+
+def scan_grid_and_save(
+    analysis: VHHAnalysis,
+    axes: Sequence[str],
+    *,
+    windows: Optional[Dict[str, Tuple[float, float]]] = None,
+    n_points: int = 40,
+    fixed_kappa: Optional[Tuple[float, ...]] = None,
+    path: Optional[Path] = None,
+    save: bool = True,
+    uncertainties: bool = False,
+) -> Tuple[ArrayDict, Path]:
+    """Scan *axes* **simultaneously** on a Cartesian grid; one ``.txt``.
+
+    Non-scanned κ stay at *fixed_kappa*. Default *n_points* is 40 per axis
+    (e.g. 2 axes → 1600 points). Returns ``(scan_data, path)``.
+    """
+    from .core import _scan_base_kappa, resolve_scan_axis, scan_axes, scan_grid
+
+    if not axes:
+        raise ValueError("scan_grid_and_save requires at least one axis")
+
+    allowed = set(scan_axes(analysis.process))
+    for axis in axes:
+        if axis not in allowed:
+            raise ValueError(
+                f"Invalid scan axis {axis!r} for {analysis.process}; "
+                f"allowed: {', '.join(sorted(allowed))}"
+            )
+
+    data = scan_grid(
+        analysis,
+        axes,
+        windows=windows,
+        n_points=n_points,
+        fixed_kappa=fixed_kappa,
+        uncertainties=uncertainties,
+    )
+    x_keys = [resolve_scan_axis(analysis.process, a)[1] for a in axes]
+    out_path = path or scan_grid_points_path(analysis.process, analysis.energy_tev, axes)
+    if save:
+        kappa_used = tuple(_scan_base_kappa(analysis, fixed_kappa))
+        resolved_windows = {a: _scan_window_for_axis(a, windows) for a in axes}
+        _write_grid_scan_file(
+            out_path,
+            analysis=analysis,
+            axes=list(axes),
+            x_keys=x_keys,
+            windows=resolved_windows,
+            n_points=n_points,
+            fixed_kappa=kappa_used,
+            data=data,
+        )
+    return data, out_path
 
 
 def load_scan_results(path: Path) -> Dict[str, Any]:
@@ -198,6 +268,40 @@ def _write_scan_file(
     return path
 
 
+def _write_grid_scan_file(
+    path: Path,
+    *,
+    analysis: VHHAnalysis,
+    axes: Sequence[str],
+    x_keys: Sequence[str],
+    windows: Dict[str, Tuple[float, float]],
+    n_points: int,
+    fixed_kappa: Tuple[float, ...],
+    data: ArrayDict,
+) -> Path:
+    columns = [*x_keys, *SCAN_VALUE_KEYS]
+    rows = np.column_stack([data[col] for col in columns])
+    win_str = "; ".join(f"{a}=[{windows[a][0]:g},{windows[a][1]:g}]" for a in axes)
+    header_lines = [
+        "# VHH-NNLO grid scan points",
+        f"# process: {analysis.process}",
+        f"# energy_tev: {float(analysis.energy_tev):g}",
+        f"# scan_axes: {','.join(axes)}",
+        f"# scan_x_keys: {','.join(x_keys)}",
+        f"# windows: {win_str}",
+        f"# n_points_per_axis: {int(n_points)}",
+        f"# n_points_total: {int(len(rows))}",
+        f"# fixed_kappa: {','.join(f'{float(k):g}' for k in fixed_kappa)}",
+        "#",
+        "\t".join(columns),
+    ]
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body_lines = ["\t".join(f"{float(x):.10g}" for x in row) for row in rows]
+    path.write_text("\n".join(header_lines) + "\n" + "\n".join(body_lines) + "\n", encoding="utf-8")
+    return path
+
+
 def _load_scan_txt(path: Path) -> Dict[str, Any]:
     comments: Dict[str, str] = {}
     table_lines: list[str] = []
@@ -229,14 +333,18 @@ def _load_scan_txt(path: Path) -> Dict[str, Any]:
         "process",
         "scan_axis",
         "scan_x_key",
+        "scan_axes",
+        "scan_x_keys",
+        "windows",
     ):
         if key in comments:
             out[key] = comments[key]
     for key in ("energy_tev", "vmin", "vmax"):
         if key in comments:
             out[key] = float(comments[key])
-    if "n_points" in comments:
-        out["n_points"] = int(comments["n_points"])
+    for key in ("n_points", "n_points_per_axis", "n_points_total"):
+        if key in comments:
+            out[key] = int(comments[key])
     if "fixed_kappa" in comments:
         out["fixed_kappa"] = [float(x) for x in comments["fixed_kappa"].split(",")]
 

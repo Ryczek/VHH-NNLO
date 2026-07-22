@@ -64,19 +64,19 @@ def smeft_data_root() -> Path:
 
 
 def results_dir() -> Path:
-    return package_root() / "Results"
+    return package_root() / "results"
 
 
 def plots_dir() -> Path:
-    return results_dir() / "Plots"
+    return results_dir() / "plots"
 
 
 def tables_dir() -> Path:
-    return results_dir() / "Tables"
+    return results_dir() / "tables"
 
 
 def points_dir() -> Path:
-    return results_dir() / "Points"
+    return results_dir() / "points"
 
 
 def process_data_dir(

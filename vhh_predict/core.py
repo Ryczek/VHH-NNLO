@@ -5,9 +5,10 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+from itertools import product
 
 from .analysis import VHHAnalysis
 from .monomials import monomial_vector
@@ -575,6 +576,101 @@ def scan(
         out["sigma_nnlo"].append(p.sigma_nnlo)
         out["sigma_heft_over_sm_lo"].append(sm_enhancement(analysis, tuple(kappa), "LO"))
         out["sigma_heft_over_sm_nnlo"].append(sm_enhancement(analysis, tuple(kappa), "NNLO"))
+        out["k"].append(p.k_factor)
+        if uncertainties:
+            out["sigma_lo_pdfas"].append(p.sigma_lo_pdfas)
+            out["sigma_lo_sup"].append(p.sigma_lo_scale_up)
+            out["sigma_lo_inf"].append(p.sigma_lo_scale_down)
+            out["sigma_nnlo_pdfas"].append(p.sigma_nnlo_pdfas)
+            out["sigma_nnlo_sup"].append(p.sigma_nnlo_scale_up)
+            out["sigma_nnlo_inf"].append(p.sigma_nnlo_scale_down)
+            out["k_pdfas"].append(p.k_pdfas)
+            out["k_sup"].append(p.k_scale_up)
+            out["k_inf"].append(p.k_scale_down)
+    return {k: np.asarray(v) for k, v in out.items()}
+
+
+def scan_grid(
+    analysis: VHHAnalysis,
+    axes: Sequence[str],
+    *,
+    windows: Optional[Dict[str, Tuple[float, float]]] = None,
+    n_points: int = 40,
+    fixed_kappa: Optional[Tuple[float, ...]] = None,
+    uncertainties: bool = False,
+) -> Dict[str, np.ndarray]:
+    """Scan several κ axes **simultaneously** on a Cartesian product grid.
+
+    Non-scanned κ stay at *fixed_kappa* (defaults SM-like). Default *n_points*
+    is 40 per axis (e.g. 2 axes → 1600 evaluations).
+    """
+    if not axes:
+        raise ValueError("scan_grid requires at least one axis")
+
+    from .tables import WILSON_INTERVALS
+
+    base = _scan_base_kappa(analysis, fixed_kappa)
+    resolved: List[Tuple[int, str, float, float]] = []
+    for axis in axes:
+        idx, x_key = resolve_scan_axis(analysis.process, axis)
+        if windows and axis in windows:
+            vmin, vmax = windows[axis]
+        elif x_key in WILSON_INTERVALS:
+            vmin, vmax = WILSON_INTERVALS[x_key]
+        elif axis in WILSON_INTERVALS:
+            vmin, vmax = WILSON_INTERVALS[axis]
+        else:
+            raise KeyError(
+                f"No scan window for {axis!r}; pass windows={{'{axis}': (vmin, vmax)}}"
+            )
+        resolved.append((idx, x_key, float(vmin), float(vmax)))
+
+    # Deduplicate if the same κ index appears twice under aliases
+    seen_idx: set[int] = set()
+    for idx, x_key, _, _ in resolved:
+        if idx in seen_idx:
+            raise ValueError(f"Duplicate scan axis for κ index {idx} ({x_key})")
+        seen_idx.add(idx)
+
+    grids = [np.linspace(vmin, vmax, n_points) for _, _, vmin, vmax in resolved]
+    x_keys = [x_key for _, x_key, _, _ in resolved]
+
+    out: Dict[str, List[float]] = {k: [] for k in x_keys}
+    out.update(
+        {
+            "sigma_lo": [],
+            "sigma_nnlo": [],
+            "sigma_heft_over_sm_lo": [],
+            "sigma_heft_over_sm_nnlo": [],
+            "k": [],
+        }
+    )
+    if uncertainties:
+        out.update(
+            {
+                "sigma_lo_pdfas": [],
+                "sigma_lo_sup": [],
+                "sigma_lo_inf": [],
+                "sigma_nnlo_pdfas": [],
+                "sigma_nnlo_sup": [],
+                "sigma_nnlo_inf": [],
+                "k_pdfas": [],
+                "k_sup": [],
+                "k_inf": [],
+            }
+        )
+
+    for vals in product(*grids):
+        kappa = list(base)
+        for (idx, x_key, _, _), val in zip(resolved, vals):
+            kappa[idx] = float(val)
+            out[x_key].append(float(val))
+        kappa_t = tuple(kappa)
+        p = predict(analysis, kappa_t)
+        out["sigma_lo"].append(p.sigma_lo)
+        out["sigma_nnlo"].append(p.sigma_nnlo)
+        out["sigma_heft_over_sm_lo"].append(sm_enhancement(analysis, kappa_t, "LO"))
+        out["sigma_heft_over_sm_nnlo"].append(sm_enhancement(analysis, kappa_t, "NNLO"))
         out["k"].append(p.k_factor)
         if uncertainties:
             out["sigma_lo_pdfas"].append(p.sigma_lo_pdfas)
