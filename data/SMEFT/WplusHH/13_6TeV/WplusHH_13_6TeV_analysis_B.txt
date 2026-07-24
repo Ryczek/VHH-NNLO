@@ -1,5 +1,5 @@
 ============================================================
-Analysis timestamp: 2026-07-22T16:09:23
+Analysis timestamp: 2026-07-24T16:55:36
 Input directory: /Users/michalryczkowski/Documents/Projects/Current/Gioia/Code_16_07/pphhV_corrected/SMEFT_Results/WplusHH/13_6TeV
 Process: WplusHH
 Energy: 13.6 TeV

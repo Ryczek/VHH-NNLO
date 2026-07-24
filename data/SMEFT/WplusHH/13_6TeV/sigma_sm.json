@@ -4,5 +4,11 @@
   "energy_tev": 13.6,
   "sigma_sm_lo": 0.296715490483785,
   "sigma_sm_nnlo": 0.3579522001337049,
-  "sm_reference_file": "WplusHH_13_6TeV_cH_Value_0.out"
+  "sm_reference_file": "WplusHH_13_6TeV_cH_Value_0.out",
+  "sigma_sm_lo_pdf": 0.006423860111372607,
+  "sigma_sm_lo_alpha_s": 0.0002706942924169675,
+  "sigma_sm_lo_pdfas": 0.006429560959383713,
+  "sigma_sm_nnlo_pdf": 0.008024015683217327,
+  "sigma_sm_nnlo_alpha_s": 0.0009286312050862666,
+  "sigma_sm_nnlo_pdfas": 0.008077572878010919
 }

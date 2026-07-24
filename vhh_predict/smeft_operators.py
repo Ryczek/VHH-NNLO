@@ -120,7 +120,8 @@ def wc_keys_for_process(process: str, order: str = "NNLO") -> Tuple[str, ...]:
 
 
 def scan_axes(process: str) -> Tuple[str, ...]:
-    return wc_keys_for_process(process, "LO")
+    """All Wilson coefficients available for scans (NNLO set; includes ZHH ``tphi``, ``phiQ3rd``)."""
+    return wc_keys_for_process(process, "NNLO")
 
 
 def sm_wc_values(process: str) -> Dict[str, float]:

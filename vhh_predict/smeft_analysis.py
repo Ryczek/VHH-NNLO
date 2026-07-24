@@ -10,7 +10,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 
 from .analysis import PROCESSES, process_data_dir, smeft_data_root
-from .scale_coefficients import ScaleDict, SEVEN_POINT_SCALES
+from .scale_coefficients import ScaleDict
 
 PDF_ALPHA_S_FILENAME = "pdf_alpha_s_covariance.json"
 SCALE_COEFFICIENTS_FILENAME = "scale_coefficients.json"
@@ -28,6 +28,7 @@ class OrderBCovariance:
     C_pdf: np.ndarray
     C_alphaS: np.ndarray
     C_pdf_alphaS: np.ndarray
+    cov_sm_B_pdf: np.ndarray
 
 
 @dataclass
@@ -47,6 +48,17 @@ class SMEFTAnalysis:
     C_NNLO_pdf: np.ndarray
     C_NNLO_alphaS: np.ndarray
     C_NNLO_pdfas: np.ndarray
+    delta_B_LO_alpha_s: np.ndarray
+    delta_B_NNLO_alpha_s: np.ndarray
+    cov_sm_B_LO_pdf: np.ndarray
+    cov_sm_B_NNLO_pdf: np.ndarray
+    # PDF(+α_s) on σ_SM itself (fb).
+    sigma_sm_lo_pdf: float = 0.0
+    sigma_sm_lo_alpha_s: float = 0.0
+    sigma_sm_lo_pdfas: float = 0.0
+    sigma_sm_nnlo_pdf: float = 0.0
+    sigma_sm_nnlo_alpha_s: float = 0.0
+    sigma_sm_nnlo_pdfas: float = 0.0
     B_LO_by_scale: Optional[ScaleDict] = None
     B_NNLO_by_scale: Optional[ScaleDict] = None
     sigma_sm_lo_by_scale: Optional[Dict[Tuple[float, float], float]] = None
@@ -62,7 +74,8 @@ class SMEFTAnalysis:
 
     @property
     def nnlo_label(self) -> str:
-        return "HHZ" if self.is_zhh else "NNLO"
+        """Display label for the higher-order cross section (always NNLO)."""
+        return "NNLO"
 
 
 def _order_from_dict(raw: dict) -> OrderBCovariance:
@@ -74,6 +87,9 @@ def _order_from_dict(raw: dict) -> OrderBCovariance:
         delta_pdf_alpha_s = np.asarray(raw["delta_pdf_alpha_s"], dtype=float)
     else:
         delta_pdf_alpha_s = np.sqrt(delta_pdf * delta_pdf + delta_alpha_s * delta_alpha_s)
+    cov_sm_B_pdf = np.asarray(raw.get("cov_sm_B_pdf", np.zeros(n)), dtype=float)
+    if cov_sm_B_pdf.shape != (n,):
+        raise ValueError(f"cov_sm_B_pdf length {cov_sm_B_pdf.shape} != n={n}")
     return OrderBCovariance(
         labels=labels,
         wc_keys=tuple(raw.get("wc_keys", labels)),
@@ -84,6 +100,7 @@ def _order_from_dict(raw: dict) -> OrderBCovariance:
         C_pdf=np.asarray(raw["C_pdf"], dtype=float).reshape(n, n),
         C_alphaS=np.asarray(raw["C_alphaS"], dtype=float).reshape(n, n),
         C_pdf_alphaS=np.asarray(raw["C_pdf_alphaS"], dtype=float).reshape(n, n),
+        cov_sm_B_pdf=cov_sm_B_pdf,
     )
 
 
@@ -134,11 +151,22 @@ def load_smeft_analysis(
     sigma_sm_lo = float(sigma_sm.get("LO", payload.get("sigma_sm_lo", 0.0)))
     sigma_sm_nn = float(sigma_sm.get("NNLO", payload.get("sigma_sm_nnlo", 0.0)))
 
+    sm_pdf = {
+        "sigma_sm_lo_pdf": float(sigma_sm.get("LO_pdf", 0.0) or 0.0),
+        "sigma_sm_lo_alpha_s": float(sigma_sm.get("LO_alpha_s", 0.0) or 0.0),
+        "sigma_sm_lo_pdfas": float(sigma_sm.get("LO_pdf_alpha_s", 0.0) or 0.0),
+        "sigma_sm_nnlo_pdf": float(sigma_sm.get("NNLO_pdf", 0.0) or 0.0),
+        "sigma_sm_nnlo_alpha_s": float(sigma_sm.get("NNLO_alpha_s", 0.0) or 0.0),
+        "sigma_sm_nnlo_pdfas": float(sigma_sm.get("NNLO_pdf_alpha_s", 0.0) or 0.0),
+    }
     sigma_path = dir_obj / SIGMA_SM_FILENAME
     if sigma_path.is_file():
         sm_payload = json.loads(sigma_path.read_text(encoding="utf-8"))
         sigma_sm_lo = float(sm_payload.get("sigma_sm_lo", sigma_sm_lo))
         sigma_sm_nn = float(sm_payload.get("sigma_sm_nnlo", sigma_sm_nn))
+        for key in sm_pdf:
+            if key in sm_payload and sm_payload[key] is not None:
+                sm_pdf[key] = float(sm_payload[key])
 
     lo_by_scale, nn_by_scale, sm_lo_by_scale, sm_nn_by_scale = _load_scale_block(
         dir_obj / SCALE_COEFFICIENTS_FILENAME
@@ -160,6 +188,11 @@ def load_smeft_analysis(
         C_NNLO_pdf=nn.C_pdf,
         C_NNLO_alphaS=nn.C_alphaS,
         C_NNLO_pdfas=nn.C_pdf_alphaS,
+        delta_B_LO_alpha_s=lo.delta_alpha_s,
+        delta_B_NNLO_alpha_s=nn.delta_alpha_s,
+        cov_sm_B_LO_pdf=lo.cov_sm_B_pdf,
+        cov_sm_B_NNLO_pdf=nn.cov_sm_B_pdf,
+        **sm_pdf,
         B_LO_by_scale=lo_by_scale,
         B_NNLO_by_scale=nn_by_scale,
         sigma_sm_lo_by_scale=sm_lo_by_scale,

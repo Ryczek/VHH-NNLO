@@ -142,6 +142,83 @@ def nnlo_sigma_for_process(central: OutCentral, *, process: str) -> Optional[flo
     return central.sigma_nnlo
 
 
+def _replica_sigmas_at_central_scale(path: Path) -> Dict[int, Dict[str, float]]:
+    """Collect ``sig_*`` at ``fact_scale=ren_scale=1`` keyed by NSET."""
+    sig_re = re.compile(
+        r"sig_(LO|NNLO|HHZ)\s*=\s*\(\s*([0-9EeDd+\-.]+)\s*\+\-\s*([0-9EeDd+\-.]+)\s*\)"
+    )
+    nset: Optional[int] = None
+    fact_scale: Optional[float] = None
+    ren_scale: Optional[float] = None
+    cur: Dict[str, float] = {}
+    out: Dict[int, Dict[str, float]] = {}
+
+    def _flush() -> None:
+        nonlocal cur
+        if nset is not None and fact_scale == 1.0 and ren_scale == 1.0 and cur:
+            out[nset] = dict(cur)
+        cur = {}
+
+    with path.open("r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            s = line.strip()
+            if not s:
+                continue
+            if m := re.search(r"NSET\s*=\s*(-?\d+)", s):
+                _flush()
+                nset = int(m.group(1))
+                fact_scale = ren_scale = None
+            elif m := re.search(r"fact_scale\s+([0-9EeDd+\-.]+)", s):
+                fact_scale = _parse_float(m.group(1))
+            elif m := re.search(r"ren_scale\s+([0-9EeDd+\-.]+)", s):
+                ren_scale = _parse_float(m.group(1))
+            elif m := sig_re.search(s):
+                cur[m.group(1)] = _parse_float(m.group(2))
+        _flush()
+    return out
+
+
+def sm_pdf_uncertainties_from_out(
+    path: Path,
+    *,
+    process: str,
+    sigma_sm_lo: float,
+    sigma_sm_nnlo: float,
+) -> Dict[str, float]:
+    """PDF / α_s / PDF+α_s on σ_SM from replica NSET=1..40 and α_s NSET=41/42.
+
+    Central values are taken from ``sigma_sm_*`` (NSET=0 at (1,1) is sometimes
+    absent from bundled SM files that only store a subset of scale points).
+    """
+    by_nset = _replica_sigmas_at_central_scale(path)
+    nn_key = "HHZ" if process == "ZHH" else "NNLO"
+
+    def _one(order_key: str, central: float) -> Tuple[float, float, float]:
+        reps = [by_nset[n][order_key] for n in range(1, 41) if n in by_nset and order_key in by_nset[n]]
+        if len(reps) < 10 or not math.isfinite(central):
+            return float("nan"), float("nan"), float("nan")
+        pdf = math.sqrt(sum((r - central) ** 2 for r in reps))
+        a41 = by_nset.get(41, {}).get(order_key)
+        a42 = by_nset.get(42, {}).get(order_key)
+        if a41 is None or a42 is None:
+            alpha = 0.0
+        else:
+            alpha = 0.5 * (a42 - a41)
+        pdfas = math.sqrt(pdf * pdf + alpha * alpha)
+        return pdf, alpha, pdfas
+
+    lo_pdf, lo_a, lo_pdfas = _one("LO", sigma_sm_lo)
+    nn_pdf, nn_a, nn_pdfas = _one(nn_key, sigma_sm_nnlo)
+    return {
+        "sigma_sm_lo_pdf": lo_pdf,
+        "sigma_sm_lo_alpha_s": lo_a,
+        "sigma_sm_lo_pdfas": lo_pdfas,
+        "sigma_sm_nnlo_pdf": nn_pdf,
+        "sigma_sm_nnlo_alpha_s": nn_a,
+        "sigma_sm_nnlo_pdfas": nn_pdfas,
+    }
+
+
 def nnlo_sigma_stat_for_process(central: OutCentral, *, process: str) -> Optional[float]:
     if process == "ZHH":
         return central.sigma_hhz_stat

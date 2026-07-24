@@ -13,7 +13,7 @@ Closed-form predictions for vector-boson-associated Higgs-pair production in two
 
 - Processes: `WplusHH`, `WminusHH`, `ZHH`
 - Energies: **13.6 TeV** and **14.0 TeV**
-- Orders: **LO** and **NNLO** (ZHH NNLO uses HHZ label in outputs)
+- Orders: **LO** and **NNLO** (for ZHH, NNLO is the HHZ contribution; always labelled NNLO)
 
 Predictions use bundled JSON under `data/{HEFT|SMEFT}/`, not external Monte Carlo.
 
@@ -105,9 +105,13 @@ See `WILSON_INTERVALS` in `vhh_predict/tables.py`.
 
 ### Prediction
 
-σ = σ_SM + **C**ᵀ **B** (LO and NNLO/HHZ separately), with $C_i$ in TeV⁻², $B_i$ in fb·TeV².
+σ = σ_SM + **C**ᵀ **B** (LO and NNLO separately; ZHH NNLO = HHZ), with $C_i$ in TeV⁻², $B_i$ in fb·TeV².
 
-- PDF+αs: √(C_wcᵀ C C_wc) with diagonal C from single-operator B extraction
+- PDF+αs on \(\sigma=\sigma_{\mathrm{SM}}+\mathbf{C}\cdot\mathbf{B}\):
+  \(\sqrt{\delta\sigma_{\mathrm{PDF}}^2+\delta\sigma_{\alpha_s}^2}\) with
+  \(\mathrm{Var}_{\mathrm{PDF}}=\delta\sigma_{\mathrm{SM}}^2+\mathbf{C}^\top C_B\mathbf{C}+2\,\mathbf{C}\cdot\mathrm{Cov}(\sigma_{\mathrm{SM}},B)\)
+  (diagonal \(C_B\) from single-operator scans; \(\mathrm{Cov}\) from the same replicas) and
+  \(\delta\sigma_{\alpha_s}=\delta\sigma_{\mathrm{SM},\alpha_s}+\mathbf{C}\cdot\delta B_{\alpha_s}\)
 - Scale: 7-point envelope on σ using refitted B_i and σ_SM at each (μ_R, μ_F)
 
 ### WC keys (logical names)
@@ -117,7 +121,9 @@ See `WILSON_INTERVALS` in `vhh_predict/tables.py`.
 | W± | `phi`, `phiBox`, `phiD`, `phiq3st`, `phiW` | — |
 | ZHH | above + `phiq1st`, `phiu`, `phid`, `phiB`, `phiWB` | `tphi` ($C_{t\varphi}$), `phiQ3rd` (B₁₂ combo) |
 
-SM: all C_i = 0 (`sm_wc_values(process)`).
+`scan_axes(process)` returns the full NNLO set (so ZHH scans may use `tphi` / `phiQ3rd`). SM: all C_i = 0 (`sm_wc_values(process)`).
+
+Benchmark σ tables (§5) cover **all** `scan_axes` WCs. ZHH is split into display groups `ZHH_TABLE_GROUPS` (bosonic / fermionic LO / NNLO extras) that together include every axis.
 
 Doc-only interval keys (not scan axes): `phit` ($C_{\varphi t}$), `phiQ3` ($C_{\varphi Q}^{(3)}$), `phiQ1rd` ($C_{\varphi Q}^{(1)}$).
 

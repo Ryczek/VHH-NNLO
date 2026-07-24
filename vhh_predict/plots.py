@@ -16,6 +16,13 @@ from .plot_style import (
     DEFAULT_PLOT_STYLE,
     PlotStyle,
 )
+from .smeft_operators import SMEFT_WC_LATEX
+
+
+def _mpl_mathtext(latex: str) -> str:
+    """Adapt LaTeX for Matplotlib mathtext (e.g. \\square is unsupported)."""
+    return latex.replace(r"\square", "□")
+
 
 X_LABELS = {
     "kappa_lambda": r"$\kappa_{\lambda}$",
@@ -24,7 +31,30 @@ X_LABELS = {
     "kappa_2w": r"$\kappa_{2W}$",
     "kappa_2z": r"$\kappa_{2Z}$",
     "kappa_t": r"$\kappa_{t}$",
+    **{k: f"${_mpl_mathtext(latex)}$" for k, latex in SMEFT_WC_LATEX.items()},
 }
+
+# Value columns that are never the scanned x-axis.
+_SCAN_VALUE_KEYS = frozenset(
+    {
+        "sigma_lo",
+        "sigma_nnlo",
+        "k",
+        "sigma_heft_over_sm_lo",
+        "sigma_heft_over_sm_nnlo",
+        "sigma_smeft_over_sm_lo",
+        "sigma_smeft_over_sm_nnlo",
+        "sigma_lo_pdfas",
+        "sigma_lo_sup",
+        "sigma_lo_inf",
+        "sigma_nnlo_pdfas",
+        "sigma_nnlo_sup",
+        "sigma_nnlo_inf",
+        "k_pdfas",
+        "k_sup",
+        "k_inf",
+    }
+)
 
 
 def _style(style: Optional[PlotStyle]) -> PlotStyle:
@@ -32,13 +62,14 @@ def _style(style: Optional[PlotStyle]) -> PlotStyle:
 
 
 def _uncertainty_band_zorders(pdf, inf, sup) -> tuple[int, int]:
+    """Return (z_pdf, z_scale). The *smaller* band is drawn on top so it stays visible."""
     pdf_mag = float(np.mean(np.asarray(pdf, dtype=float)))
     scale_mag = float(
         np.mean(np.maximum(np.asarray(inf, dtype=float), np.asarray(sup, dtype=float)))
     )
-    if scale_mag > pdf_mag:
-        return 2, 3
-    return 3, 2
+    if scale_mag >= pdf_mag:
+        return 3, 2  # PDF (inner) above scale (outer)
+    return 2, 3  # scale (inner) above PDF (outer)
 
 
 def _fill_pdf(ax, x, y, delta, *, label: str, zorder: int = 2) -> None:
@@ -92,15 +123,12 @@ def _k_ylim_from_scan(scan: Dict[str, np.ndarray], *, show_uncertainty: bool) ->
 
 
 def _infer_x_key(scan: Dict[str, np.ndarray]) -> str:
-    for key in (
-        "kappa_lambda",
-        "kappa_w",
-        "kappa_z",
-        "kappa_2w",
-        "kappa_2z",
-        "kappa_t",
-    ):
+    for key in X_LABELS:
         if key in scan:
+            return key
+    # Fallback: first array column that is not a known physics value.
+    for key in scan:
+        if key not in _SCAN_VALUE_KEYS:
             return key
     raise KeyError("Could not infer scan x-axis key")
 

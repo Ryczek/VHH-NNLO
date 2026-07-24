@@ -18,10 +18,9 @@ Accompanies an **in-preparation publication** (*Precise predictions for double H
 Both notebooks share the same workflow:
 
 - **Spot check** — $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$, $K$-factor, and enhancement over SM at any EFT point.
-- **Scan** — vary one Wilson parameter; optional PDF/scale bands and `.txt` tables (§3).
-- **Joint multi-axis scan** — Cartesian grid over several axes at once; one `.txt` (§4).
-- **Plot** — two-panel figures: $\sigma_{\mathrm{NNLO}}+K$ and $\sigma/\sigma_{\mathrm{SM}}$.
-- **Compare** — optional check against bundled simulation `.out` files (spot check only).
+- **Scan** — vary one EFT parameter; optional PDF/scale bands and `.txt` output table.
+- **Plot** — two-panel figures: $\sigma_{\mathrm{NNLO}}+K$-factor and $\sigma_{\mathrm{NNLO}}+\sigma^{\mathrm{EFT}}_{\mathrm{NNLO}}/\sigma^{\mathrm{SM}}_{\mathrm{NNLO}}$.
+- **Joint multi-axis scan** — scan over several coefficients axes at once; `.txt` output table.
 - **Benchmark tables** — interval-boundary tables in `.tex` (HEFT $\kappa$ or SMEFT $C_i$).
 
 Processes: `pp>W+HH`, `pp>W-HH`, `pp>ZHH` at **13.6** or **14.0** TeV.
@@ -43,8 +42,6 @@ jupyter notebook vhh_prediction_SMEFT.ipynb   # SMEFT (C_i)
 ```
 
 Run all cells top to bottom. Edit **§1** (process, flags), **§2** (EFT point), **§3** (scan + plots), **§4** (joint grid scan), **§5** (benchmark tables).
-
-> Restart the Jupyter kernel after editing `vhh_predict/` code. Start Jupyter from the repo root so `data/` and `results/` resolve correctly.
 
 ---
 

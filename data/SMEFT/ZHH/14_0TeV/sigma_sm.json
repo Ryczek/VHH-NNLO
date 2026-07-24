@@ -4,5 +4,11 @@
   "energy_tev": 14.0,
   "sigma_sm_lo": 0.3055090540617304,
   "sigma_sm_nnlo": 0.4172771612271783,
-  "sm_reference_file": "ZHH_14_0TeV_cH_Value_0.out"
+  "sm_reference_file": "ZHH_14_0TeV_cH_Value_0.out",
+  "sigma_sm_lo_pdf": 0.006219178870126881,
+  "sigma_sm_lo_alpha_s": 0.00024794223939328397,
+  "sigma_sm_lo_pdfas": 0.006224119309003325,
+  "sigma_sm_nnlo_pdf": 0.007740720766757154,
+  "sigma_sm_nnlo_alpha_s": 0.0014347659823330805,
+  "sigma_sm_nnlo_pdfas": 0.007872567015463613
 }

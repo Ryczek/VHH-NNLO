@@ -207,13 +207,13 @@ def export_channel_energy(
             files = analyze_mod.collect_scan_points(wc_path, r.op.fortran)
             wc_file = files.get(r.ref_wc)
             if wc_file is None:
-                lo_vec.append(float("nan"))
+                lo_vec.append(float(r.central))  # no scale-point file: keep central B_i
                 continue
             wc_data = parse_out_file(wc_file)
             b = _extract_b_at_scale(
                 analyze_mod, sm_data, wc_data, r.ref_wc, channel, "LO", fs, rs
             )
-            lo_vec.append(b if b is not None else float("nan"))
+            lo_vec.append(float(b) if b is not None else float(r.central))
         lo_by_scale[sk] = lo_vec
 
         nn_vec: List[float] = []
@@ -227,13 +227,13 @@ def export_channel_energy(
             files = analyze_mod.collect_scan_points(wc_path, r.op.fortran)
             wc_file = files.get(r.ref_wc)
             if wc_file is None:
-                nn_vec.append(float("nan"))
+                nn_vec.append(float(r.central))  # no scale-point file: keep central B_i
                 continue
             wc_data = parse_out_file(wc_file)
             b = _extract_b_at_scale(
                 analyze_mod, sm_data, wc_data, r.ref_wc, channel, "NNLO", fs, rs
             )
-            nn_vec.append(b if b is not None else float("nan"))
+            nn_vec.append(float(b) if b is not None else float(r.central))
         nn_by_scale[sk] = nn_vec
 
     scale_payload = {
@@ -259,6 +259,21 @@ def export_channel_energy(
         "sigma_sm_nnlo": sigma_sm_nn,
         "sm_reference_file": sm_path.name,
     }
+    # PDF(+α_s) on σ_SM from the same SM .out replicas (needed so small-B
+    # operators still show a visible PDF band on σ = σ_SM + C·B plots).
+    try:
+        from vhh_predict.out_parser import sm_pdf_uncertainties_from_out
+
+        sigma_payload.update(
+            sm_pdf_uncertainties_from_out(
+                sm_path,
+                process=channel,
+                sigma_sm_lo=float(sigma_sm_lo),
+                sigma_sm_nnlo=float(sigma_sm_nn),
+            )
+        )
+    except Exception as exc:  # pragma: no cover - best-effort during packaging
+        print(f"  warning: could not extract SM PDF from {sm_path.name}: {exc}")
     (dest / "sigma_sm.json").write_text(json.dumps(sigma_payload, indent=2), encoding="utf-8")
 
     # Simulation: copy all .out from full/ then loop/ (skip .parallel_jobs).

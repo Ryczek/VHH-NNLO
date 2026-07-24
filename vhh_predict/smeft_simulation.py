@@ -12,7 +12,10 @@ from .analysis import process_simulation_dir, smeft_data_root
 from .out_parser import nnlo_sigma_for_process, parse_out_central
 from .smeft_operators import Z_OPERATORS, W_OPERATORS, normalize_wc_dict, sm_wc_values
 
-WC_VALUE_RE = re.compile(r"(?i)(cH\w*|cth|chust|chdst|churd)_Value_([-0-9_]+)")
+# Value token is digits/underscores/signs only; optional trailing `_Corrected` is ignored.
+WC_VALUE_RE = re.compile(
+    r"(?i)(cH\w*|cth|chust|chdst|churd)_Value_([-0-9_]+?)(?:_Corrected)?(?=\.|$)"
+)
 
 
 @dataclass(frozen=True)

@@ -1,5 +1,5 @@
 ============================================================
-Analysis timestamp: 2026-07-22T16:09:25
+Analysis timestamp: 2026-07-24T16:55:39
 Input directory: /Users/michalryczkowski/Documents/Projects/Current/Gioia/Code_16_07/pphhV_corrected/SMEFT_Results/WminusHH/14_0TeV
 Process: WminusHH
 Energy: 14.0 TeV

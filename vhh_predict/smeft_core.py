@@ -46,6 +46,33 @@ def _prop_std(m: np.ndarray, cov: np.ndarray) -> float:
     return float(math.sqrt(max(float(m @ cov @ m), 0.0)))
 
 
+def _sigma_pdf_unc(
+    m: np.ndarray,
+    *,
+    sm_pdf: float,
+    cov_B: np.ndarray,
+    cov_sm_B: np.ndarray,
+) -> float:
+    """PDF on σ = σ_SM + C·B including Cov(σ_SM, B) from replicas.
+
+    Var = δσ_SM² + mᵀ C_B m + 2 m · Cov(σ_SM, B).
+    """
+    sm_u = sm_pdf if math.isfinite(sm_pdf) else 0.0
+    var = sm_u * sm_u + float(m @ cov_B @ m) + 2.0 * float(m @ cov_sm_B)
+    return float(math.sqrt(max(var, 0.0)))
+
+
+def _sigma_alpha_s_unc(
+    m: np.ndarray,
+    *,
+    sm_alpha: float,
+    delta_B_alpha: np.ndarray,
+) -> float:
+    """α_s shift on σ = σ_SM + C·B: δσ_α = δσ_SM_α + C · δB_α (2-point)."""
+    sm_a = sm_alpha if math.isfinite(sm_alpha) else 0.0
+    return float(abs(sm_a + float(m @ delta_B_alpha)))
+
+
 def _sigma_scale_envelope(
     wcs: Dict[str, float],
     wc_keys: Tuple[str, ...],
@@ -58,10 +85,26 @@ def _sigma_scale_envelope(
     if not by_scale:
         return float("nan"), float("nan")
     m = _wc_vector(wc_keys, wcs)
+    b0 = np.asarray(b_central, dtype=float)
     sup, inf = 0.0, 0.0
     for key, b_vec in by_scale.items():
+        b = np.asarray(b_vec, dtype=float)
+        if b.shape != b0.shape:
+            raise ValueError(
+                f"Scale B vector shape {b.shape} != central shape {b0.shape} at {key}"
+            )
+        # Missing/NaN scale-refit entries: fall back to the central B_i
+        # (important: 0*nan is nan, which would otherwise zero the envelope).
+        bad = ~np.isfinite(b)
+        if np.any(bad):
+            b = b.copy()
+            b[bad] = b0[bad]
         sm_s = sm_by_scale.get(key, sigma_sm) if sm_by_scale else sigma_sm
-        val = float(sm_s + m @ b_vec)
+        if not math.isfinite(sm_s):
+            sm_s = sigma_sm
+        val = float(sm_s + m @ b)
+        if not math.isfinite(val):
+            continue
         sup = max(sup, val - central)
         inf = max(inf, central - val)
     return sup, inf
@@ -94,9 +137,11 @@ def sigma_uncertainties(
         wc_keys = analysis.wc_keys_lo
         m = _wc_vector(wc_keys, wcs)
         cov_pdf = analysis.C_LO_pdf
-        cov_alpha_s = analysis.C_LO_alphaS
-        cov_pdfas = analysis.C_LO_pdfas
         sigma_sm = analysis.sigma_sm_lo
+        sm_pdf = analysis.sigma_sm_lo_pdf
+        sm_alpha = analysis.sigma_sm_lo_alpha_s
+        delta_B_alpha = analysis.delta_B_LO_alpha_s
+        cov_sm_B = analysis.cov_sm_B_LO_pdf
         b_central = analysis.B_LO
         by_scale = analysis.B_LO_by_scale
         sm_by_scale = analysis.sigma_sm_lo_by_scale
@@ -104,9 +149,11 @@ def sigma_uncertainties(
         wc_keys = analysis.wc_keys_nnlo
         m = _wc_vector(wc_keys, wcs)
         cov_pdf = analysis.C_NNLO_pdf
-        cov_alpha_s = analysis.C_NNLO_alphaS
-        cov_pdfas = analysis.C_NNLO_pdfas
         sigma_sm = analysis.sigma_sm_nnlo
+        sm_pdf = analysis.sigma_sm_nnlo_pdf
+        sm_alpha = analysis.sigma_sm_nnlo_alpha_s
+        delta_B_alpha = analysis.delta_B_NNLO_alpha_s
+        cov_sm_B = analysis.cov_sm_B_NNLO_pdf
         b_central = analysis.B_NNLO
         by_scale = analysis.B_NNLO_by_scale
         sm_by_scale = analysis.sigma_sm_nnlo_by_scale
@@ -117,11 +164,15 @@ def sigma_uncertainties(
     scale_up, scale_down = _sigma_scale_envelope(
         wcs, wc_keys, sigma_sm, b_central, central, by_scale, sm_by_scale
     )
+    pdf = _sigma_pdf_unc(m, sm_pdf=sm_pdf, cov_B=cov_pdf, cov_sm_B=cov_sm_B)
+    alpha = _sigma_alpha_s_unc(m, sm_alpha=sm_alpha, delta_B_alpha=delta_B_alpha)
+    pdfas = float(math.sqrt(max(pdf * pdf + alpha * alpha, 0.0)))
+
     return {
         "central": central,
-        "pdf": _prop_std(m, cov_pdf),
-        "alpha_s": _prop_std(m, cov_alpha_s),
-        "pdf_alpha_s": _prop_std(m, cov_pdfas),
+        "pdf": pdf,
+        "alpha_s": alpha,
+        "pdf_alpha_s": pdfas,
         "scale_up": scale_up,
         "scale_down": scale_down,
         "sigma_sm": sigma_sm,
@@ -161,15 +212,27 @@ def predict(analysis: SMEFTAnalysis, wcs: Dict[str, float]) -> SMEFTPrediction:
         m_lo_sm = _wc_vector(analysis.wc_keys_lo, sm)
         m_nn_sm = _wc_vector(analysis.wc_keys_nnlo, sm)
         k_vals: List[float] = []
+        b_lo0 = np.asarray(analysis.B_LO, dtype=float)
+        b_nn0 = np.asarray(analysis.B_NNLO, dtype=float)
         for key, b_lo in analysis.B_LO_by_scale.items():  # type: ignore[union-attr]
             b_nn = analysis.B_NNLO_by_scale.get(key)  # type: ignore[union-attr]
             if b_nn is None:
                 continue
+            b_lo_a = np.asarray(b_lo, dtype=float)
+            b_nn_a = np.asarray(b_nn, dtype=float)
+            bad_lo = ~np.isfinite(b_lo_a)
+            bad_nn = ~np.isfinite(b_nn_a)
+            if np.any(bad_lo):
+                b_lo_a = b_lo_a.copy()
+                b_lo_a[bad_lo] = b_lo0[bad_lo]
+            if np.any(bad_nn):
+                b_nn_a = b_nn_a.copy()
+                b_nn_a[bad_nn] = b_nn0[bad_nn]
             sm_lo_s = (analysis.sigma_sm_lo_by_scale or {}).get(key, analysis.sigma_sm_lo)
             sm_nn_s = (analysis.sigma_sm_nnlo_by_scale or {}).get(key, analysis.sigma_sm_nnlo)
-            s_lo_s = float(sm_lo_s + m_lo @ b_lo)
-            s_nn_s = float(sm_nn_s + m_nn @ b_nn)
-            if s_lo_s != 0.0:
+            s_lo_s = float(sm_lo_s + m_lo @ b_lo_a)
+            s_nn_s = float(sm_nn_s + m_nn @ b_nn_a)
+            if s_lo_s != 0.0 and math.isfinite(s_lo_s) and math.isfinite(s_nn_s):
                 k_vals.append(s_nn_s / s_lo_s)
         k_scale_up = max((kv - k0) for kv in k_vals) if k_vals else float("nan")
         k_scale_down = max((k0 - kv) for kv in k_vals) if k_vals else float("nan")
@@ -222,7 +285,7 @@ def spot_check_table(
 
     wcs = normalize_wc_dict(analysis.process, wcs)
     p = predict(analysis, wcs)
-    nn_label = analysis.nnlo_label
+    nn_label = "NNLO"  # display name; ZHH uses HHZ internally
     sim = (
         load_smeft_simulation_central(
             analysis.process,
@@ -304,24 +367,6 @@ def spot_check_table(
         p.sigma_nnlo_scale_down,
         p.sigma_nnlo_pdfas,
         sim_nnlo,
-    )
-    _add_row(
-        "σ/σ_SM (LO)",
-        sm_enhancement(analysis, wcs, "LO"),
-        float("nan"),
-        float("nan"),
-        float("nan"),
-        None,
-        with_uncertainty=False,
-    )
-    _add_row(
-        f"σ/σ_SM ({nn_label})",
-        sm_enhancement(analysis, wcs, "NNLO"),
-        float("nan"),
-        float("nan"),
-        float("nan"),
-        None,
-        with_uncertainty=False,
     )
     _add_row(
         "K",

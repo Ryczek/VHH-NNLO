@@ -441,26 +441,6 @@ def spot_check_table(
         p.sigma_nnlo_pdfas,
         sim_nnlo,
     )
-    enh_lo = sm_enhancement(analysis, kappa, "LO")
-    enh_nn = sm_enhancement(analysis, kappa, "NNLO")
-    _add_row(
-        "σ_HEFT/σ_SM (LO)",
-        enh_lo,
-        float("nan"),
-        float("nan"),
-        float("nan"),
-        None,
-        with_uncertainty=False,
-    )
-    _add_row(
-        f"σ_HEFT/σ_SM ({nn_label})",
-        enh_nn,
-        float("nan"),
-        float("nan"),
-        float("nan"),
-        None,
-        with_uncertainty=False,
-    )
     _add_row(
         "K",
         p.k_factor,
