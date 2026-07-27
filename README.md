@@ -7,7 +7,7 @@ Closed-form predictions for **vector-boson-associated double-Higgs production** 
 | **HEFT** | $\sigma = \sum_k A_k \kappa_i^n \kappa_j^m$ | `data/HEFT/` | [`vhh_prediction_HEFT.ipynb`](vhh_prediction_HEFT.ipynb) |
 | **SMEFT** | $\sigma = \sigma_{\mathrm{SM}} + \sum_i B_i C_i$ | `data/SMEFT/` | [`vhh_prediction_SMEFT.ipynb`](vhh_prediction_SMEFT.ipynb) |
 
-Coefficients and optional simulation reference points are bundled under `data/` — no Monte Carlo or fitting step required.
+Coefficients and optional simulation reference points are bundled under `data/` — no Monte Carlo or fitting step required. If you only need the fitted **$A_k$** (HEFT) or **$B_i$** (SMEFT) arrays, load the JSON files described under [Contents of `data/`](#contents-of-data) — the Python package is optional.
 
 Accompanies an **in-preparation publication** (*Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory*).
 
@@ -155,7 +155,50 @@ VHH-NNLO/
 
 `Process` is `WplusHH`, `WminusHH`, or `ZHH`. Energies use folder names `13_6TeV` and `14_0TeV`.
 
-Human-readable `*_analysis_A.txt` / `*_analysis_B.txt` files are reference only; the code reads JSON at runtime.
+### Contents of `data/`
+
+Each process/energy folder holds the closed-form coefficients used by the predictors. You can use these JSON files on their own (any language) without installing `vhh-predict`.
+
+| File | Framework | Role |
+|------|-----------|------|
+| `pdf_alpha_s_covariance.json` | HEFT & SMEFT | Central coefficients + PDF/$\alpha_s$ uncertainties and covariances |
+| `scale_coefficients.json` | HEFT & SMEFT | Same coefficients refitted at each of the 7 $(\mu_R,\mu_F)$ scale points |
+| `sigma_sm.json` | SMEFT only | SM cross sections $\sigma_{\mathrm{SM}}$ (also duplicated under `sigma_sm` in the covariance JSON) |
+| `*_analysis_A.txt` / `*_analysis_B.txt` | HEFT / SMEFT | Human-readable dump of the same numbers (reference only; runtime code reads JSON) |
+| `Simulation/*.out` | optional | Monte Carlo spot-check points |
+
+**HEFT** — $\sigma = \mathbf{m}(\kappa)^\top \mathbf{A}$ (fb). Central vectors are
+
+- `LO.A_central` and `NNLO.A_central` in `pdf_alpha_s_covariance.json`
+- length **6** for $W^\pm HH$ (all orders) and for $ZHH$ at LO; **18** for $ZHH$ at NNLO (HHZ)
+- companion keys: `delta_pdf`, `delta_alpha_s`, `C_pdf`, `C_pdf_alphaS`, …
+- scale variations: `A_LO_by_scale` / `A_NNLO_by_scale` in `scale_coefficients.json`, keyed by `"μR,μF"` strings such as `"1,1"`, `"0.5,0.5"`, …
+
+**SMEFT** — $\sigma = \sigma_{\mathrm{SM}} + \mathbf{C}^\top \mathbf{B}$ with $C_i$ in TeV$^{-2}$ and $B_i$ in fb·TeV$^{2}$. Central vectors are
+
+- `LO.B_central` and `NNLO.B_central` in `pdf_alpha_s_covariance.json`
+- `wc_keys` lists the logical WC names in the same order as $\mathbf{B}$ (e.g. `phi`, `phiBox`, …)
+- $\sigma_{\mathrm{SM}}$: `sigma_sm.json` (`sigma_sm_lo`, `sigma_sm_nnlo`) or the `sigma_sm` block in the covariance JSON
+- scale variations: `B_LO_by_scale` / `B_NNLO_by_scale` and `sigma_sm_*_by_scale` in `scale_coefficients.json`
+
+Minimal example (central $A$ / $B$ only):
+
+```python
+import json
+from pathlib import Path
+
+# HEFT A at NNLO
+heft = json.loads(Path("data/HEFT/WplusHH/13_6TeV/pdf_alpha_s_covariance.json").read_text())
+A_nnlo = heft["NNLO"]["A_central"]  # list[float]
+
+# SMEFT B and σ_SM at NNLO
+smeft = json.loads(Path("data/SMEFT/WplusHH/13_6TeV/pdf_alpha_s_covariance.json").read_text())
+B_nnlo = smeft["NNLO"]["B_central"]
+wc_keys = smeft["NNLO"]["wc_keys"]
+sigma_sm_nnlo = smeft["sigma_sm"]["NNLO"]
+```
+
+For full predictions with uncertainties, prefer `load_analysis()` / `load_smeft_analysis()` and `predict()` from the package.
 
 ### Contents of `results/`
 
