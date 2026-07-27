@@ -59,10 +59,10 @@ VHH-NNLO/
 │       ├── sigma_sm.json
 │       ├── {Process}_{energy}_analysis_B.txt
 │       └── Simulation/*.out
-└── results/
-    ├── points/ (+ smeft/)
-    ├── plots/ (+ smeft/)
-    └── tables/ (+ smeft/)
+└── results/                         # shipped notebook outputs
+    ├── points/{heft,smeft}/{Process}/{13_6TeV|14_0TeV}/
+    ├── plots/{heft,smeft}/{Process}/{13_6TeV|14_0TeV}/
+    └── tables/{heft,smeft}/         # heft_publication_tables.tex / smeft_publication_tables.tex
 ```
 
 Path resolution:
@@ -71,7 +71,11 @@ Path resolution:
 - `heft_data_root()` = `package_root() / "data" / "HEFT"`
 - `smeft_data_root()` = `package_root() / "data" / "SMEFT"`
 - `data_root(framework)` accepts `"HEFT"` or `"SMEFT"`
-- `results_dir()` / `points_dir()` / `plots_dir()` / `tables_dir()` → `results/{points,plots,tables}/`
+- `results_dir()` → `results/`
+- `points_dir(framework, process, energy_tev)` / `plots_dir(framework, process, energy_tev)` → `results/{points,plots}/{heft|smeft}/{Process}/{13_6TeV|14_0TeV}/`; `tables_dir(framework)` → `results/tables/{heft|smeft}/`
+- `scan_plot_path(framework, process, energy_tev, scan_x_key, vmin, vmax, variant)` → default scan PNG under `results/plots/…`
+- `heft_wilson_tables_path()` / `smeft_wc_intervals_path()` → publication LaTeX files under `results/tables/{heft|smeft}/`, named `heft_publication_tables.tex` and `smeft_publication_tables.tex`
+- Scan point tables use `scan_points_path` / `smeft_scan_points_path` (no notebook config needed)
 
 ## HEFT physics / API
 
@@ -93,7 +97,7 @@ SM: all κ = 1 (`sm_kappa(process)`).
 
 ### Wilson intervals (HEFT)
 
-See `WILSON_INTERVALS` in `vhh_predict/tables.py`.
+`WILSON_INTERVALS` in `vhh_predict/tables.py` holds the **95% CL exclusion intervals for every HEFT $\kappa$** ($\kappa_\lambda$, $\kappa_W$, $\kappa_Z$, $\kappa_{2W}$, $\kappa_{2Z}$, $\kappa_t$). They set default scan windows and the min/max columns in the publication benchmark tables.
 
 ### Simulation (HEFT)
 
@@ -167,11 +171,11 @@ scan_data, path = scan_and_save(analysis, "phiW", vmin=-1, vmax=1, save=True)
 
 ### `vhh_prediction_HEFT.ipynb`
 
-Independent HEFT workflow. Setup verifies editable install + `data/HEFT/`. Sections §1–§5. Writes to `results/{points,plots,tables}/`.
+Independent HEFT workflow. Setup verifies editable install + `data/HEFT/`. Sections §1–§5. Writes points/plots under `results/{points,plots}/heft/<Process>/<energy>/` and tables to `results/tables/heft/heft_publication_tables.tex`.
 
 ### `vhh_prediction_SMEFT.ipynb`
 
-Independent SMEFT workflow. Setup verifies editable install + `data/SMEFT/`. Uses `WCS` dict instead of `KAPPA` tuple. Writes to `results/{points,plots,tables}/smeft/`.
+Independent SMEFT workflow. Setup verifies editable install + `data/SMEFT/`. Uses `WCS` dict instead of `KAPPA` tuple. Writes points/plots under `results/{points,plots}/smeft/<Process>/<energy>/` and tables to `results/tables/smeft/smeft_publication_tables.tex`.
 
 Neither notebook depends on the other. Both import shared plot helpers from `vhh_predict.plots`.
 
@@ -183,7 +187,8 @@ Neither notebook depends on the other. Both import shared plot helpers from `vhh
 - Regenerate SMEFT bundle: `python scripts/build_smeft_package_data.py --repo-root <main-repo>`.
 - `*_analysis_A.txt` / `*_analysis_B.txt` are human reference only.
 - HEFT simulation: κ filenames. SMEFT simulation: `cH*` / `cth` / `chust` filenames.
-- Do not commit generated `results/plots/**/*.png` unless intentional.
+- Everything under `results/{points,plots,tables}/` is **meant to be committed**. Local junk (`.venv`, `__pycache__`, …) stays in `.gitignore`.
+- `.gitkeep` files only keep empty result subdirs in git until real outputs are added.
 
 ## Packaging (`pyproject.toml`)
 

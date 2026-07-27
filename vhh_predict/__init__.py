@@ -9,13 +9,17 @@ from .analysis import (
     VHHAnalysis,
     data_root,
     heft_data_root,
+    heft_wilson_tables_path,
     smeft_data_root,
+    smeft_wc_intervals_path,
     load_analysis,
+    plot_path,
     plots_dir,
     points_dir,
     process_data_dir,
     process_simulation_dir,
     results_dir,
+    table_path,
     tables_dir,
 )
 from .core import (
@@ -50,6 +54,7 @@ from .plot_style import (
     default_plot_title,
     plot_style_with_layout,
     scan_plot_filename_stem,
+    scan_plot_path,
 )
 from .tables import (
     CHANNELS,
@@ -72,6 +77,10 @@ __all__ = [
     "plots_dir",
     "points_dir",
     "tables_dir",
+    "plot_path",
+    "table_path",
+    "heft_wilson_tables_path",
+    "smeft_wc_intervals_path",
     "process_data_dir",
     "process_simulation_dir",
     "load_analysis",
@@ -120,6 +129,7 @@ __all__ = [
     "default_plot_title",
     "plot_style_with_layout",
     "scan_plot_filename_stem",
+    "scan_plot_path",
 ]
 
 

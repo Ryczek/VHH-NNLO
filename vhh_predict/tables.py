@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
@@ -11,14 +10,15 @@ import pandas as pd
 from .analysis import VHHAnalysis, load_analysis
 from .core import Prediction, predict, scan_axes, sm_kappa
 
-# Table 2 in the HEFT Wilson-coefficient uncertainty note (95% CL intervals).
+# 95% CL exclusion intervals for every HEFT κ (κ_λ, κ_W, κ_Z, κ_2W, κ_2Z, κ_t).
+# Used as default scan windows and as the min/max points in §5 benchmark tables.
 WILSON_INTERVALS: Dict[str, Tuple[float, float]] = {
-    "kappa_lambda": (-0.7, 6.1),
-    "kappa_w": (0.8, 1.2),
-    "kappa_z": (0.9, 1.2),
-    "kappa_2w": (0.7, 1.3),
-    "kappa_2z": (0.7, 1.3),
-    "kappa_t": (0.8, 1.2),
+    "kappa_lambda": (-0.70, 6.10),
+    "kappa_w": (0.85, 1.20),
+    "kappa_z": (0.90, 1.20),
+    "kappa_2w": (0.70, 1.30),
+    "kappa_2z": (0.70, 1.30),
+    "kappa_t": (0.80, 1.20),
 }
 
 SM_VALUE = 1.0
@@ -64,40 +64,24 @@ ZHH_GROUP_LABELS = {
 @dataclass(frozen=True)
 class LatexTableStyle:
     position: str
-    sqrt_col: str
-    pipe_after_sqrt: bool
-    sqrt_header: str
-    sigma_header: str  # format with {n}
     process_name: str
     label: str
 
 
 LATEX_STYLES: Dict[str, LatexTableStyle] = {
     "WplusHH": LatexTableStyle(
-        position="htbp",
-        sqrt_col="c",
-        pipe_after_sqrt=True,
-        sqrt_header=r"\multirow{2}{*}{$\sqrt{s}$}",
-        sigma_header=r"\multicolumn{{{n}}}{{c}}{{$\sigma$}}",
-        process_name=r"$W^+HH$",
+        position="htbp!",
+        process_name=r"$W^+hh$",
         label="tab:wplushh_HEFT",
     ),
     "WminusHH": LatexTableStyle(
-        position="ht",
-        sqrt_col="l",
-        pipe_after_sqrt=False,
-        sqrt_header=r"\multirow{2}{*}{$\sqrt{s}$ [TeV]}",
-        sigma_header=r"\multicolumn{{{n}}}{{c|}}{{$\sigma$ [fb]}}",
-        process_name=r"$W^-HH$",
+        position="htbp",
+        process_name=r"$W^-hh$",
         label="tab:wminushh_HEFT",
     ),
     "ZHH": LatexTableStyle(
         position="htbp",
-        sqrt_col="l",
-        pipe_after_sqrt=False,
-        sqrt_header=r"\multirow{2}{*}{$\sqrt{s}$ [TeV]}",
-        sigma_header=r"\multicolumn{{{n}}}{{c}}{{$\sigma$ [fb]}}",
-        process_name=r"$ZHH$",
+        process_name=r"$Zhh$",
         label="tab:zhh_HEFT",
     ),
 }
@@ -128,8 +112,9 @@ def _pct(delta: float, central: float) -> float:
 
 
 def wilson_bounds(axis: str) -> Tuple[float, float]:
+    """Return interval endpoints for tables (two-decimal manuscript precision)."""
     lo, hi = WILSON_INTERVALS[axis]
-    return (math.floor(lo * 10 + 0.5) / 10, math.floor(hi * 10 + 0.5) / 10)
+    return (round(float(lo), 2), round(float(hi), 2))
 
 
 def kappa_with_varied_axis(
@@ -153,16 +138,29 @@ def format_sigma_plain(cell: SigmaCell, *, digits: int = 3) -> str:
     )
 
 
-def format_sigma_latex(cell: SigmaCell, *, digits: int = 3) -> str:
+def _sigma_latex_digits(sigma_nnlo: float) -> int:
+    """Manuscript-style precision: two decimals in $1\\le\\sigma<10$ fb, else three."""
+    val = abs(float(sigma_nnlo))
+    if 1.0 <= val < 10.0:
+        return 2
+    return 3
+
+
+def format_sigma_latex(cell: SigmaCell, *, digits: Optional[int] = None) -> str:
+    nd = digits if digits is not None else _sigma_latex_digits(cell.sigma_nnlo)
     return (
-        rf"${cell.sigma_nnlo:.{digits}f}"
-        rf"_{{+{cell.scale_up_pct:.2f}\%}}^{{-{cell.scale_down_pct:.2f}\%}}"
+        rf"${cell.sigma_nnlo:.{nd}f}"
+        rf"^{{+{cell.scale_up_pct:.2f}\%}}_{{-{cell.scale_down_pct:.2f}\%}}"
         rf" \pm {cell.pdf_pct:.1f}\%$"
     )
 
 
 def _format_energy_latex(energy_tev: float) -> str:
-    return rf"${energy_tev:g}$"
+    return rf"${float(energy_tev):.1f}$"
+
+
+def _format_kappa_bound(val: float) -> str:
+    return f"{val:.2f}"
 
 
 def _column_id(axis: str, variant: str) -> str:
@@ -186,8 +184,8 @@ def table_column_headers_for_axes(axes: Sequence[str]) -> List[str]:
     for axis in axes:
         lo, hi = wilson_bounds(axis)
         kplain = KAPPA_PLAIN[axis]
-        headers.append(f"{kplain}={lo:.1f}")
-        headers.append(f"{kplain}={hi:.1f}")
+        headers.append(f"{kplain}={lo:.2f}")
+        headers.append(f"{kplain}={hi:.2f}")
     return headers
 
 
@@ -269,26 +267,36 @@ def build_channel_table_groups(
     return groups
 
 
-def _col_spec(style: LatexTableStyle, n_sigma: int) -> str:
-    pipe = " | " if style.pipe_after_sqrt else ""
-    return style.sqrt_col + pipe + r"@{\hspace{10pt}}c" * n_sigma
+def _col_spec(n_sigma: int) -> str:
+    """Column spec for $\\sqrt{s}$ + *n_sigma* value columns (manuscript layout)."""
+    if n_sigma <= 0:
+        return "c"
+    # e.g. n_sigma=5 → c @{\hspace{10pt}}c@{\hspace{10pt}}…c@{\hspace{10pt}}c  (6 cols)
+    return r"c @{\hspace{10pt}}" + r"c@{\hspace{10pt}}" * (n_sigma - 1) + "c"
 
 
-def _default_caption(style: LatexTableStyle, kappa_note: str) -> str:
+def _w_channel_caption(process_name: str) -> str:
     return (
-        rf"Cross-section values $\sigma$ [fb] for {style.process_name} process "
-        rf"for $\sqrt{{s}}=13.6,\, 14$ TeV, with {kappa_note}"
-        r"each $\kappa$ at its interval boundary (others taken at their SM values)"
+        rf"Cross-section values $\sigma$ [fb] at NNLO QCD in HEFT for {process_name} "
+        r"at $\sqrt{s} = 13.6$, $14.0$ TeV, for the SM and various $\kappa$ values at their "
+        r"exclusion boundaries. All other $\kappa$ parameters are set to their SM values."
     )
 
 
 def _zhh_caption(axes: Sequence[str]) -> str:
-    title = ZHH_GROUP_TITLES[tuple(axes)]
-    style = LATEX_STYLES["ZHH"]
+    if tuple(axes) == ("kappa_lambda", "kappa_t"):
+        kappa_note = (
+            r"the SM and $\kappa_\lambda$, $\kappa_{t}$ at their exclusion boundaries. "
+            r"All other $\kappa$ parameters are set to their SM values."
+        )
+    else:
+        kappa_note = (
+            r"the SM and $\kappa_Z$, $\kappa_{2Z}$ at their exclusion boundaries. "
+            r"All other $\kappa$ coefficients are set to their SM values."
+        )
     return (
-        rf"Cross-section values $\sigma$ [fb] for {style.process_name} process "
-        rf"for $\sqrt{{s}}=13.6,\, 14$ TeV, with {title} at their interval "
-        r"boundaries (other $\kappa$ taken at their SM values)"
+        r"Cross-section values $\sigma$ [fb] at NNLO QCD in HEFT for $Zhh$ "
+        r"at $\sqrt{s} = 13.6$, $14.0$ TeV, for " + kappa_note
     )
 
 
@@ -311,7 +319,7 @@ def latex_wilson_table(
         if process == "ZHH":
             cap = _zhh_caption(axes)
         else:
-            cap = _default_caption(style, kappa_note="")
+            cap = _w_channel_caption(style.process_name)
     else:
         cap = caption
 
@@ -324,15 +332,15 @@ def latex_wilson_table(
         lbl = label
 
     row1 = [
-        style.sqrt_header,
-        style.sigma_header.format(n=n_sigma),
+        r"\multirow{2}{*}{$\sqrt{s}$}",
+        rf"\multicolumn{{{n_sigma}}}{{c}}{{$\sigma_{{NNLO}}$}}",
     ]
     row2 = ["", "SM"]
     for axis in axes:
         lo, hi = wilson_bounds(axis)
         ktex = KAPPA_LATEX[axis]
-        row2.append(rf"${ktex}={lo:.1f}$")
-        row2.append(rf"${ktex}={hi:.1f}$")
+        row2.append(rf"${ktex}={_format_kappa_bound(lo)}$")
+        row2.append(rf"${ktex}={_format_kappa_bound(hi)}$")
 
     lines = [
         rf"\begin{{table}}[{style.position}]",
@@ -340,7 +348,7 @@ def latex_wilson_table(
         r"\resizebox{\textwidth}{!}{%",
         r"  \renewcommand{\arraystretch}{1.45}%",
         r"  \setlength{\tabcolsep}{7pt}%",
-        r"  \begin{tabular}{" + _col_spec(style, n_sigma) + "}",
+        r"  \begin{tabular}{" + _col_spec(n_sigma) + "}",
         r"    \hline",
         "    " + " & ".join(row1) + r" \\",
         rf"    \cline{{{2}-{last_col}}}",
@@ -362,7 +370,7 @@ def latex_wilson_table(
         [
             r"    \hline",
             r"  \end{tabular}%",
-            r"}%",
+            r"}",
             rf"\caption{{{cap}}}",
             rf"\label{{{lbl}}}",
             r"\end{table}",

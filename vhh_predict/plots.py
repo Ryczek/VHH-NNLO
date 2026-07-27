@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import FixedLocator, MaxNLocator, StrMethodFormatter
 
 from .plot_style import (
     CB_CURVE,
@@ -14,6 +16,8 @@ from .plot_style import (
     CB_SCALE_EDGE,
     CB_SCALE_HATCH,
     DEFAULT_PLOT_STYLE,
+    HEFT_K_AXIS,
+    SMEFT_K_AXIS,
     PlotStyle,
 )
 from .smeft_operators import SMEFT_WC_LATEX
@@ -122,6 +126,82 @@ def _k_ylim_from_scan(scan: Dict[str, np.ndarray], *, show_uncertainty: bool) ->
     return ylo - pad, yhi + pad
 
 
+def _k_decimal_places(ylo: float, yhi: float) -> int:
+    """Pick y-tick precision so narrow K scans do not show duplicate labels."""
+    span = max(float(yhi) - float(ylo), 1e-12)
+    step = span / 3.0
+    return max(2, min(4, int(math.ceil(-math.log10(step)))))
+
+
+def _k_axis_preset(
+    process: Optional[str],
+    scan_x_key: Optional[str] = None,
+) -> Optional[dict]:
+    if process is None:
+        return None
+    if scan_x_key is not None:
+        smeft = SMEFT_K_AXIS.get((process, scan_x_key))
+        if smeft is not None:
+            return smeft
+    return HEFT_K_AXIS.get(process)
+
+
+def _resolve_k_ylim(
+    scan: Dict[str, np.ndarray],
+    *,
+    process: Optional[str],
+    scan_x_key: Optional[str] = None,
+    k_ylim: Optional[tuple[float, float]],
+    show_uncertainty: bool,
+) -> tuple[float, float]:
+    if k_ylim is not None:
+        return k_ylim
+    preset = _k_axis_preset(process, scan_x_key)
+    if preset is not None:
+        return preset["ylim"]
+    return _k_ylim_from_scan(scan, show_uncertainty=show_uncertainty)
+
+
+def _resolve_k_yticks(
+    *,
+    process: Optional[str],
+    scan_x_key: Optional[str] = None,
+    k_yticks: Optional[Sequence[float]],
+) -> Optional[tuple[float, ...]]:
+    if k_yticks is not None:
+        return tuple(float(t) for t in k_yticks)
+    preset = _k_axis_preset(process, scan_x_key)
+    if preset is not None:
+        return preset["yticks"]
+    return None
+
+
+def _apply_k_axis_format(
+    ax,
+    *,
+    process: Optional[str] = None,
+    scan_x_key: Optional[str] = None,
+    k_yticks: Optional[Sequence[float]] = None,
+) -> None:
+    """Absolute K tick labels (no matplotlib offset that shows 0.001 instead of 1.2)."""
+    ticks = _resolve_k_yticks(process=process, scan_x_key=scan_x_key, k_yticks=k_yticks)
+    if ticks is not None:
+        preset = _k_axis_preset(process, scan_x_key) if k_yticks is None else None
+        decimals = (
+            preset["decimals"]
+            if preset is not None
+            else _k_decimal_places(min(ticks), max(ticks))
+        )
+        ax.yaxis.set_major_locator(FixedLocator(ticks))
+        ax.yaxis.set_major_formatter(StrMethodFormatter(f"{{x:.{decimals}f}}"))
+    else:
+        ylo, yhi = ax.get_ylim()
+        decimals = _k_decimal_places(ylo, yhi)
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=4, prune="both"))
+        ax.yaxis.set_major_formatter(StrMethodFormatter(f"{{x:.{decimals}f}}"))
+    ax.yaxis.get_offset_text().set_visible(False)
+
+
 def _infer_x_key(scan: Dict[str, np.ndarray]) -> str:
     for key in X_LABELS:
         if key in scan:
@@ -166,6 +246,13 @@ def _overlay_simulation(ax, x: np.ndarray, y: np.ndarray, *, label: str = "simul
     )
 
 
+def _apply_grid(ax, style: PlotStyle) -> None:
+    """Use a denser publication-style grid with major + minor lines."""
+    ax.minorticks_on()
+    ax.grid(which="major", alpha=style.grid_alpha, linewidth=0.55)
+    ax.grid(which="minor", alpha=style.grid_alpha * 0.45, linewidth=0.35)
+
+
 def _inset_connection_corners(inset_h: str, inset_v: str) -> tuple[tuple[float, float], tuple[float, float]]:
     """Data-corner of zoom box and corresponding inset-axes corner for connector lines."""
     if inset_h == "left" and inset_v == "upper":
@@ -200,7 +287,8 @@ def _add_sigma_inset(
     x_min, x_max = float(np.min(x)), float(np.max(x))
     span = max(x_max - x_min, 1e-12)
     if xlim is None:
-        xlo, xhi = x_min, x_min + float(style.inset_x_fraction) * span
+        xlo = x_min + float(style.inset_x_start_fraction) * span
+        xhi = xlo + float(style.inset_x_fraction) * span
     else:
         xlo, xhi = xlim
 
@@ -235,7 +323,7 @@ def _add_sigma_inset(
     axins.set_xticks([])
     axins.set_yticks([])
     axins.tick_params(labelsize=max(style.tick_label_fontsize - 4, 8))
-    axins.grid(alpha=style.grid_alpha * 0.8)
+    _apply_grid(axins, style)
 
     line_kw = dict(linestyle="--", color="0.45", lw=0.8, clip_on=False)
     ax.add_patch(
@@ -243,9 +331,9 @@ def _add_sigma_inset(
     )
     fig = ax.figure
     data_corner, inset_corner = _inset_connection_corners(style.inset_h, style.inset_v)
-    for x_corner, inset_x in ((xlo, inset_corner[0]), (xhi, inset_corner[0])):
-        y_data = yhi_z if data_corner[1] > 0.5 else ylo_z
-        y_inset = inset_corner[1]
+    y_data = yhi_z if data_corner[1] > 0.5 else ylo_z
+    y_inset = inset_corner[1]
+    for x_corner, inset_x in ((xlo, 0.0), (xhi, 1.0)):
         fig.add_artist(
             ConnectionPatch(
                 xyA=(x_corner, y_data),
@@ -255,6 +343,46 @@ def _add_sigma_inset(
                 **line_kw,
             )
         )
+
+
+def _smooth_display_curve(x, y, *, n_dense: int = 600) -> tuple[np.ndarray, np.ndarray]:
+    """Shape-preserving cubic Hermite interpolation for smoother display curves."""
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    if x.ndim != 1 or y.ndim != 1 or len(x) != len(y) or len(x) < 3:
+        return x, y
+    if not np.all(np.diff(x) > 0):
+        return x, y
+
+    h = np.diff(x)
+    delta = np.diff(y) / h
+    m = np.empty_like(y)
+    m[0] = delta[0]
+    m[-1] = delta[-1]
+    for i in range(1, len(y) - 1):
+        if delta[i - 1] == 0.0 or delta[i] == 0.0 or np.sign(delta[i - 1]) != np.sign(delta[i]):
+            m[i] = 0.0
+        else:
+            w1 = 2.0 * h[i] + h[i - 1]
+            w2 = h[i] + 2.0 * h[i - 1]
+            m[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i])
+
+    x_dense = np.linspace(x[0], x[-1], n_dense)
+    idx = np.searchsorted(x, x_dense, side="right") - 1
+    idx = np.clip(idx, 0, len(x) - 2)
+    t = (x_dense - x[idx]) / (x[idx + 1] - x[idx])
+    hseg = x[idx + 1] - x[idx]
+    h00 = 2 * t**3 - 3 * t**2 + 1
+    h10 = t**3 - 2 * t**2 + t
+    h01 = -2 * t**3 + 3 * t**2
+    h11 = t**3 - t**2
+    y_dense = (
+        h00 * y[idx]
+        + h10 * hseg * m[idx]
+        + h01 * y[idx + 1]
+        + h11 * hseg * m[idx + 1]
+    )
+    return x_dense, y_dense
 
 
 def _make_two_panel_figure(style: PlotStyle):
@@ -315,7 +443,7 @@ def _plot_sigma_panel(
     if sim_scan is not None and len(sim_scan.get("x", [])):
         _overlay_simulation(ax, sim_scan["x"], sim_scan["sigma_nnlo"])
     style.set_axis_labels(ax, ylabel=rf"$\sigma_{{\mathrm{{{nnlo_label}}}}}$ [fb]")
-    ax.grid(alpha=style.grid_alpha)
+    _apply_grid(ax, style)
     style.make_legend(ax)
     _apply_scan_xlim(ax, scan, x_key, style, xmin=xmin, xmax=xmax)
     if sigma_inset and "sigma_nnlo_pdfas" in scan:
@@ -410,7 +538,7 @@ def plot_sigma_lo_only(
         )
     st.set_axis_labels(ax, xlabel=x_label, ylabel=r"$\sigma_{\mathrm{LO}}$ [fb]")
     st.make_legend(ax)
-    ax.grid(alpha=st.grid_alpha)
+    _apply_grid(ax, st)
     _apply_scan_xlim(ax, scan, key, st, xmin=xmin, xmax=xmax)
     fig.tight_layout()
     st.save_figure(fig, output, save=save)
@@ -479,7 +607,7 @@ def plot_sigma_nnlo_and_enhancement_nnlo(
     else:
         pad = 0.06 * max(float(np.max(y) - np.min(y)), 1e-6)
         ax1.set_ylim(float(np.min(y)) - pad, float(np.max(y)) + pad)
-    ax1.grid(alpha=st.grid_alpha)
+    _apply_grid(ax1, st)
     _clear_legend(ax1)
     _apply_scan_xlim(ax1, scan, key, st, xmin=xmin, xmax=xmax)
 
@@ -560,7 +688,7 @@ def plot_enhancement_only(
         pad = 0.06 * max(float(np.max(y) - np.min(y)), 1e-6)
         ax.set_ylim(float(np.min(y)) - pad, float(np.max(y)) + pad)
     st.make_legend(ax)
-    ax.grid(alpha=st.grid_alpha)
+    _apply_grid(ax, st)
     _apply_scan_xlim(ax, scan, key, st, xmin=xmin, xmax=xmax)
     fig.tight_layout()
     st.save_figure(fig, output, save=save)
@@ -572,6 +700,7 @@ def plot_sigma_nnlo_and_kfactor(
     *,
     output: Optional[Path] = None,
     title: Optional[str] = None,
+    process: Optional[str] = None,
     x_key: Optional[str] = None,
     x_label: Optional[str] = None,
     nnlo_label: str = "NNLO",
@@ -580,6 +709,7 @@ def plot_sigma_nnlo_and_kfactor(
     sigma_inset_xlim: Optional[tuple[float, float]] = None,
     sim_scan: Optional[Dict[str, np.ndarray]] = None,
     k_ylim: Optional[tuple[float, float]] = None,
+    k_yticks: Optional[Sequence[float]] = None,
     xmin: Optional[float] = None,
     xmax: Optional[float] = None,
     style: Optional[PlotStyle] = None,
@@ -605,15 +735,25 @@ def plot_sigma_nnlo_and_kfactor(
         x_key=key,
     )
 
-    ax1.plot(x, scan["k"], color=CB_CURVE, lw=st.line_width, zorder=4)
+    xk_s, yk_s = _smooth_display_curve(x, scan["k"])
+    ax1.plot(xk_s, yk_s, color=CB_CURVE, lw=st.line_width, zorder=4)
     if show_k_uncertainty:
         _fill_uncertainty_bands(ax1, x, scan["k"], scan["k_pdfas"], scan["k_inf"], scan["k_sup"])
     if sim_scan is not None and len(sim_scan.get("x", [])):
         sim_k = sim_scan["sigma_nnlo"] / sim_scan["sigma_lo"]
         _overlay_simulation(ax1, sim_scan["x"], sim_k, label="simulation $K$")
     st.set_axis_labels(ax1, xlabel=x_label, ylabel=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
-    ax1.set_ylim(*(k_ylim or _k_ylim_from_scan(scan, show_uncertainty=show_k_uncertainty)))
-    ax1.grid(alpha=st.grid_alpha)
+    ax1.set_ylim(
+        *_resolve_k_ylim(
+            scan,
+            process=process,
+            scan_x_key=key,
+            k_ylim=k_ylim,
+            show_uncertainty=show_k_uncertainty,
+        )
+    )
+    _apply_k_axis_format(ax1, process=process, scan_x_key=key, k_yticks=k_yticks)
+    _apply_grid(ax1, st)
     _clear_legend(ax1)
     _apply_scan_xlim(ax1, scan, key, st, xmin=xmin, xmax=xmax)
 
@@ -679,7 +819,7 @@ def plot_sm_enhancement(
             pad = 0.06 * max(float(np.max(y) - np.min(y)), 1e-6)
             ax.set_ylim(float(np.min(y)) - pad, float(np.max(y)) + pad)
         st.make_legend(ax)
-        ax.grid(alpha=st.grid_alpha)
+        _apply_grid(ax, st)
 
     st.set_axis_labels(ax1, xlabel=x_label)
     _apply_scan_xlim(ax1, scan, key, st, xmin=xmin, xmax=xmax)
@@ -693,12 +833,14 @@ def plot_kfactor_only(
     *,
     output: Optional[Path] = None,
     title: Optional[str] = None,
+    process: Optional[str] = None,
     x_key: Optional[str] = None,
     x_label: Optional[str] = None,
     nnlo_label: str = "NNLO",
     show_uncertainty: bool = False,
     sim_scan: Optional[Dict[str, np.ndarray]] = None,
     k_ylim: Optional[tuple[float, float]] = None,
+    k_yticks: Optional[Sequence[float]] = None,
     xmin: Optional[float] = None,
     xmax: Optional[float] = None,
     style: Optional[PlotStyle] = None,
@@ -712,7 +854,8 @@ def plot_kfactor_only(
     fig, ax = plt.subplots(1, 1, figsize=st.figsize_single)
     if title:
         st.apply_ax_title(ax, title)
-    ax.plot(x, scan["k"], color=CB_CURVE, lw=st.line_width, label=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
+    xk_s, yk_s = _smooth_display_curve(x, scan["k"])
+    ax.plot(xk_s, yk_s, color=CB_CURVE, lw=st.line_width, label=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
     if show_uncertainty:
         _fill_uncertainty_bands(ax, x, scan["k"], scan["k_pdfas"], scan["k_inf"], scan["k_sup"])
     if sim_scan is not None and len(sim_scan.get("x", [])):
@@ -720,8 +863,17 @@ def plot_kfactor_only(
         _overlay_simulation(ax, sim_scan["x"], sim_k, label="simulation $K$")
     st.make_legend(ax)
     st.set_axis_labels(ax, xlabel=x_label, ylabel=rf"$K_{{\mathrm{{{nnlo_label}}}}}$")
-    ax.set_ylim(*(k_ylim or _k_ylim_from_scan(scan, show_uncertainty=show_uncertainty)))
-    ax.grid(alpha=st.grid_alpha)
+    ax.set_ylim(
+        *_resolve_k_ylim(
+            scan,
+            process=process,
+            scan_x_key=key,
+            k_ylim=k_ylim,
+            show_uncertainty=show_uncertainty,
+        )
+    )
+    _apply_k_axis_format(ax, process=process, scan_x_key=key, k_yticks=k_yticks)
+    _apply_grid(ax, st)
     _apply_scan_xlim(ax, scan, key, st, xmin=xmin, xmax=xmax)
     fig.tight_layout()
     st.save_figure(fig, output, save=save)

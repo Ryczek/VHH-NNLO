@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
+
+from .analysis import plot_path
 
 # Colour-blind friendly palette (same as plots.py)
 CB_PDF_FILL = "#0066CC"
@@ -14,9 +17,92 @@ CB_SCALE_HATCH = "\\\\\\"
 CB_CURVE = "#222222"
 
 PROCESS_TITLES = {
-    "WplusHH": r"$W^+ HH$",
-    "WminusHH": r"$W^- HH$",
-    "ZHH": "Zhh",
+    "WplusHH": r"$W^+ hh$",
+    "WminusHH": r"$W^- hh$",
+    "ZHH": r"$Zhh$",
+}
+
+# Fixed lower-panel K axes for HEFT scans (publication layout).
+HEFT_K_AXIS = {
+    "WplusHH": {
+        "ylim": (1.200, 1.220),
+        "yticks": (1.205, 1.215),
+        "decimals": 3,
+    },
+    "WminusHH": {
+        "ylim": (1.165, 1.185),
+        "yticks": (1.17, 1.18),
+        "decimals": 2,
+    },
+    "ZHH": {
+        "ylim": (1.2, 1.65),
+        "yticks": (1.3, 1.5),
+        "decimals": 1,
+    },
+}
+
+# SMEFT K-axis overrides keyed by (process, scan WC key).
+SMEFT_K_AXIS = {
+    ("WplusHH", "phi"): {
+        "ylim": (1.200, 1.22),
+        "yticks": (1.21, 1.22),
+        "decimals": 2,
+    },
+    ("WplusHH", "phiW"): {
+        "ylim": (1.1, 1.6),
+        "yticks": (1.2, 1.4),
+        "decimals": 2,
+    },
+    ("WplusHH", "phiBox"): {
+        "ylim": (1.2, 1.21),
+        "yticks": (1.205, 1.21),
+        "decimals": 2,
+    },
+    ("WplusHH", "phiq3st"): {
+        "ylim": (1.05, 1.25),
+        "yticks": (1.10, 1.20),
+        "decimals": 2,
+    },
+    ("WminusHH", "phi"): {
+        "ylim": (1.16, 1.20),
+        "yticks": (1.17, 1.19),
+        "decimals": 2,
+    },
+    ("WminusHH", "phiW"): {
+        "ylim": (1.15, 1.25),
+        "yticks": (1.20, 1.25),
+        "decimals": 2,
+    },
+    ("WminusHH", "phiBox"): {
+        "ylim": (1.160, 1.175),
+        "yticks": (1.165, 1.175),
+        "decimals": 2,
+    },
+    ("WminusHH", "phiq3st"): {
+        "ylim": (1.05, 1.25),
+        "yticks": (1.10, 1.20),
+        "decimals": 2,
+    },
+    ("ZHH", "phi"): {
+        "ylim": (1.2, 1.8),
+        "yticks": (1.4, 1.6),
+        "decimals": 2,
+    },
+    ("ZHH", "phiW"): {
+        "ylim": (1.2, 1.7),
+        "yticks": (1.3, 1.5),
+        "decimals": 2,
+    },
+    ("ZHH", "phiBox"): {
+        "ylim": (1.25, 1.75),
+        "yticks": (1.40, 1.60),
+        "decimals": 2,
+    },
+    ("ZHH", "tphi"): {
+        "ylim": (1.2, 1.6),
+        "yticks": (1.3, 1.5),
+        "decimals": 2,
+    },
 }
 
 
@@ -40,9 +126,10 @@ class PlotStyle:
     title_layout_top: float = 0.97
     x_pad_frac: float = 0.04
     inset_x_fraction: float = 0.01
-    inset_scale: float = 1.5
+    inset_x_start_fraction: float = 0.0
+    inset_scale: float = 1.8
     inset_width_frac: float = 0.20
-    inset_height_frac: float = 0.18
+    inset_height_frac: float = 0.15
     inset_margin: float = 0.04
 
     legend_h: str = "right"
@@ -161,3 +248,27 @@ def scan_plot_filename_stem(
     vmax: float,
 ) -> str:
     return f"{process}_{float(energy_tev):g}TeV_{scan_x_key}_{float(vmin):g}_to_{float(vmax):g}"
+
+
+def scan_plot_path(
+    framework: str,
+    process: str,
+    energy_tev: float,
+    scan_x_key: str,
+    vmin: float,
+    vmax: float,
+    variant: str,
+) -> Path:
+    """Default PNG path for a scan figure under ``results/plots/{framework}/…``."""
+    variant_alias = {
+        "sigma_nnlo_K": "sigma_nnlo_and_K_nnlo",
+        "sigma_nnlo_sigmaSM_NNLO": "sigma_nnlo_and_EFT_enhancement",
+        "sigma_nnlo_sigmaSM_HHZ": "sigma_nnlo_and_EFT_enhancement",
+    }
+    stem = scan_plot_filename_stem(process, energy_tev, scan_x_key, vmin, vmax)
+    return plot_path(
+        framework,
+        process,
+        energy_tev,
+        f"{stem}_{variant_alias.get(variant, variant)}.png",
+    )

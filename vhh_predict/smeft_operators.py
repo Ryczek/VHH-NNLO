@@ -12,8 +12,8 @@ SMEFT_WC_INTERVALS: Dict[str, Tuple[float, float]] = {
     "phiW": (-1.0, 1.0),
     "phiB": (-0.5, 0.5),
     "phiWB": (-1.5, 1.5),
-    "phiD": (-2.0, 2.0),
-    "phiBox": (-1.5, 1.5),
+    "phiD": (-1.5, 1.5),
+    "phiBox": (-2.0, 2.0),
     # Fermionic (individuals + B₁₂ combination used in ZHH NNLO)
     "phiq3st": (-0.2, 0.05),
     "phit": (-25.0, 34.0),  # C_φt; distinct from C_tφ (tphi)

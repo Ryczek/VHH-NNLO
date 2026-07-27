@@ -31,7 +31,7 @@ def smeft_scan_points_path(
     root: Optional[Path] = None,
 ) -> Path:
     name = f"{process}_{float(energy_tev):g}TeV_{scan_x_key}.txt"
-    return (root or points_dir()) / "smeft" / name
+    return (root or points_dir("SMEFT", process, energy_tev)) / name
 
 
 def scan_grid_points_path(
@@ -45,7 +45,7 @@ def scan_grid_points_path(
 
     keys = [resolve_scan_axis(process, a)[1] for a in axes]
     name = f"{process}_{float(energy_tev):g}TeV_{'_x_'.join(keys)}.txt"
-    return (root or points_dir()) / "smeft" / name
+    return (root or points_dir("SMEFT", process, energy_tev)) / name
 
 
 def scan_and_save(
@@ -129,7 +129,7 @@ def scan_grid_and_save(
     save: bool = True,
     uncertainties: bool = False,
 ) -> Tuple[ArrayDict, Path]:
-    """Scan *axes* **simultaneously** on a Cartesian grid; one ``.txt`` under ``results/points/smeft/``."""
+    """Scan *axes* **simultaneously** on a Cartesian grid; one ``.txt`` under ``results/points/smeft/{Process}/{energy}/``."""
     from .smeft_core import resolve_scan_axis, scan_grid
     from .smeft_operators import normalize_wc_dict, scan_axes, sm_wc_values
 

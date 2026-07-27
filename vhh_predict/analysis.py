@@ -67,16 +67,79 @@ def results_dir() -> Path:
     return package_root() / "results"
 
 
-def plots_dir() -> Path:
-    return results_dir() / "plots"
+def _framework_subdir(framework: str) -> str:
+    fw = framework.upper()
+    if fw not in FRAMEWORKS:
+        raise KeyError(f"Unknown framework: {framework} (use HEFT or SMEFT)")
+    return fw.lower()
 
 
-def tables_dir() -> Path:
-    return results_dir() / "tables"
+def _results_leaf(kind: str, framework: str, process: Optional[str], energy_tev: Optional[float]) -> Path:
+    root = results_dir() / kind / _framework_subdir(framework)
+    if process is None and energy_tev is None:
+        return root
+    if process is None or energy_tev is None:
+        raise ValueError("process and energy_tev must be provided together")
+    return root / process / process_data_dir(process, float(energy_tev), framework=framework).name
 
 
-def points_dir() -> Path:
-    return results_dir() / "points"
+def plots_dir(
+    framework: str = "HEFT",
+    process: Optional[str] = None,
+    energy_tev: Optional[float] = None,
+) -> Path:
+    return _results_leaf("plots", framework, process, energy_tev)
+
+
+def tables_dir(
+    framework: str = "HEFT",
+    process: Optional[str] = None,
+    energy_tev: Optional[float] = None,
+) -> Path:
+    return _results_leaf("tables", framework, process, energy_tev)
+
+
+def points_dir(
+    framework: str = "HEFT",
+    process: Optional[str] = None,
+    energy_tev: Optional[float] = None,
+) -> Path:
+    return _results_leaf("points", framework, process, energy_tev)
+
+
+def _ensure_results_dir(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def plot_path(
+    framework: str,
+    process: str,
+    energy_tev: float,
+    filename: str,
+) -> Path:
+    """``results/plots/{framework}/{Process}/{energy}/{filename}``."""
+    return _ensure_results_dir(plots_dir(framework, process, energy_tev)) / filename
+
+
+def table_path(
+    framework: str,
+    process: str,
+    energy_tev: float,
+    filename: str,
+) -> Path:
+    """``results/tables/{framework}/{Process}/{energy}/{filename}``."""
+    return _ensure_results_dir(tables_dir(framework, process, energy_tev)) / filename
+
+
+def heft_wilson_tables_path() -> Path:
+    """``results/tables/heft/heft_publication_tables.tex``."""
+    return _ensure_results_dir(tables_dir("HEFT")) / "heft_publication_tables.tex"
+
+
+def smeft_wc_intervals_path() -> Path:
+    """``results/tables/smeft/smeft_publication_tables.tex``."""
+    return _ensure_results_dir(tables_dir("SMEFT")) / "smeft_publication_tables.tex"
 
 
 def process_data_dir(

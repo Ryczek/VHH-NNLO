@@ -1,4 +1,4 @@
-"""κ-scan: evaluate and save point tables under ``results/points/``."""
+"""κ-scan: evaluate and save point tables under ``results/points/heft/``."""
 
 from __future__ import annotations
 
@@ -28,9 +28,9 @@ def scan_points_path(
     *,
     root: Optional[Path] = None,
 ) -> Path:
-    """``results/points/{Process}_{energy}TeV_{axis}.txt``."""
+    """``results/points/heft/{Process}/{energy}/{Process}_{energy}TeV_{axis}.txt``."""
     name = f"{process}_{float(energy_tev):g}TeV_{scan_x_key}.txt"
-    return (root or points_dir()) / name
+    return (root or points_dir("HEFT", process, energy_tev)) / name
 
 
 def scan_grid_points_path(
@@ -40,12 +40,12 @@ def scan_grid_points_path(
     *,
     root: Optional[Path] = None,
 ) -> Path:
-    """``results/points/{Process}_{energy}TeV_{axis1}_x_{axis2}_….txt``."""
+    """``results/points/heft/{Process}/{energy}/{Process}_{energy}TeV_{axis1}_x_{axis2}_….txt``."""
     from .core import resolve_scan_axis
 
     keys = [resolve_scan_axis(process, a)[1] for a in axes]
     name = f"{process}_{float(energy_tev):g}TeV_{'_x_'.join(keys)}.txt"
-    return (root or points_dir()) / name
+    return (root or points_dir("HEFT", process, energy_tev)) / name
 
 
 def scan_and_save(

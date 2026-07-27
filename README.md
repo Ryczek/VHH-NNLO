@@ -4,7 +4,7 @@ Closed-form predictions for **vector-boson-associated double-Higgs production** 
 
 | Framework | Expansion | Data | Notebook |
 |-----------|-----------|------|----------|
-| **HEFT** | $\sigma = \sum_i A_i \kappa_i^n \kappa_j^m$ | `data/HEFT/` | [`vhh_prediction_HEFT.ipynb`](vhh_prediction_HEFT.ipynb) |
+| **HEFT** | $\sigma = \sum_k A_k \kappa_i^n \kappa_j^m$ | `data/HEFT/` | [`vhh_prediction_HEFT.ipynb`](vhh_prediction_HEFT.ipynb) |
 | **SMEFT** | $\sigma = \sigma_{\mathrm{SM}} + \sum_i B_i C_i$ | `data/SMEFT/` | [`vhh_prediction_SMEFT.ipynb`](vhh_prediction_SMEFT.ipynb) |
 
 Coefficients and optional simulation reference points are bundled under `data/` — no Monte Carlo or fitting step required.
@@ -18,7 +18,7 @@ Accompanies an **in-preparation publication** (*Precise predictions for double H
 Both notebooks share the same workflow:
 
 - **Spot check** — $\sigma_{\mathrm{LO}}$, $\sigma_{\mathrm{NNLO}}$, $K$-factor, and enhancement over SM at any EFT point.
-- **Scan** — vary one EFT parameter; optional PDF/scale bands and `.txt` output table.
+- **Single-axis scan** — vary one EFT parameter; optional PDF/scale bands and `.txt` output table.
 - **Plot** — two-panel figures: $\sigma_{\mathrm{NNLO}}+K$-factor and $\sigma_{\mathrm{NNLO}}+\sigma^{\mathrm{EFT}}_{\mathrm{NNLO}}/\sigma^{\mathrm{SM}}_{\mathrm{NNLO}}$.
 - **Joint multi-axis scan** — scan over several coefficients axes at once; `.txt` output table.
 - **Benchmark tables** — interval-boundary tables in `.tex` (HEFT $\kappa$ or SMEFT $C_i$).
@@ -49,7 +49,7 @@ Run all cells top to bottom. Edit **§1** (process, flags), **§2** (EFT point),
 
 **Notebook:** [`vhh_prediction_HEFT.ipynb`](vhh_prediction_HEFT.ipynb)
 
-Outputs under `results/points/`, `results/plots/`, `results/tables/`.
+Outputs under `results/points/heft/<Process>/<energy>/`, `results/plots/heft/<Process>/<energy>/`, and `results/tables/heft/` (single publication `.tex`).
 
 SM: all $\kappa = 1$.
 
@@ -69,16 +69,16 @@ SM: all $\kappa = 1$.
 | `WplusHH`, `WminusHH` | `(κ_λ, κ_W, κ_{2W})` |
 | `ZHH` | `(κ_λ, κ_Z, κ_{2Z}, κ_t)` |
 
-**95% CL intervals** (`WILSON_INTERVALS` in `vhh_predict/tables.py`):
+**95% CL exclusion intervals for all HEFT $\kappa$** (`WILSON_INTERVALS` in `vhh_predict/tables.py`; also the default scan / §5 table bounds):
 
 | Coefficient | Min | SM | Max |
 |-------------|-----|----|-----|
-| $\kappa_\lambda$ | −0.7 | 1 | 6.1 |
-| $\kappa_W$ | 0.8 | 1 | 1.2 |
-| $\kappa_Z$ | 0.9 | 1 | 1.2 |
-| $\kappa_{2W}$ | 0.7 | 1 | 1.3 |
-| $\kappa_{2Z}$ | 0.7 | 1 | 1.3 |
-| $\kappa_t$ | 0.8 | 1 | 1.2 |
+| $\kappa_\lambda$ | −0.70 | 1 | 6.10 |
+| $\kappa_W$ | 0.85 | 1 | 1.20 |
+| $\kappa_Z$ | 0.90 | 1 | 1.20 |
+| $\kappa_{2W}$ | 0.70 | 1 | 1.30 |
+| $\kappa_{2Z}$ | 0.70 | 1 | 1.30 |
+| $\kappa_t$ | 0.80 | 1 | 1.20 |
 
 ---
 
@@ -86,7 +86,7 @@ SM: all $\kappa = 1$.
 
 **Notebook:** [`vhh_prediction_SMEFT.ipynb`](vhh_prediction_SMEFT.ipynb)
 
-Outputs under `results/points/smeft/`, `results/plots/smeft/`, `results/tables/smeft/`.
+Outputs under `results/points/smeft/<Process>/<energy>/`, `results/plots/smeft/<Process>/<energy>/`, and `results/tables/smeft/` (single publication `.tex`).
 
 - **$W^\pm HH$:** $B_1$–$B_5$ ↔ $C_\varphi$, $C_{\varphi\square}$, $C_{\varphi D}$, $C_{\varphi q}^{(3)}$, $C_{\varphi W}$
 - **$ZHH$ LO:** $B_1$–$B_{10}$
@@ -102,8 +102,8 @@ SM: all $C_i = 0$. Set **`WCS`** as a dictionary, e.g. `{"phiW": -0.2}`.
 | $C_{\varphi W}$ | [−1, 1] |
 | $C_{\varphi B}$ | [−0.5, 0.5] |
 | $C_{\varphi WB}$ | [−1.5, 1.5] |
-| $C_{\varphi D}$ | [−2, 2] |
-| $C_{\varphi\square}$ | [−1.5, 1.5] |
+| $C_{\varphi D}$ | [−1.5, 1.5] |
+| $C_{\varphi\square}$ | [−2, 2] |
 
 | Fermionic $C_i$ [TeV$^{-2}$] | Interval |
 |------------------------------|----------|
@@ -111,13 +111,10 @@ SM: all $C_i = 0$. Set **`WCS`** as a dictionary, e.g. `{"phiW": -0.2}`.
 | $C_{\varphi t}$ | [−25, 34] |
 | $C_{\varphi Q}^{(3)}$ | [−8, 2] |
 | $C_{\varphi Q}^{(1)}$ | [−6.5, 30.5] |
-| $C_{\varphi t}+C_{\varphi Q}^{(3)}-C_{\varphi Q}^{(1)}$ | [−8, 2] |
 | $C_{\varphi q}^{(1)}$ | [−3, 1] |
 | $C_{\varphi u}$ | [−3.5, 1] |
 | $C_{\varphi d}$ | [−4, 4] |
 | $C_{t\varphi}$ | [−15, 5] |
-
-> **$C_{t\varphi}$ ≠ $C_{\varphi t}$:** $C_{t\varphi}$ ($B_{11}$, Fortran `cth`) is distinct from $C_{\varphi t}$ (enters the $B_{12}$ combination).
 
 ---
 
@@ -150,18 +147,31 @@ VHH-NNLO/
 │       ├── sigma_sm.json
 │       ├── {Process}_{energy}_analysis_B.txt
 │       └── Simulation/*.out
-└── results/                    # notebook output (created on first run)
-    ├── points/                 # HEFT scan tables
-    │   └── smeft/              # SMEFT scan tables
-    ├── plots/
-    │   └── smeft/
-    └── tables/
-        └── smeft/
+└── results/                         # shipped notebook outputs (see below)
+    ├── points/{heft,smeft}/{Process}/{13_6TeV|14_0TeV}/
+    ├── plots/{heft,smeft}/{Process}/{13_6TeV|14_0TeV}/
+    └── tables/{heft,smeft}/         # one publication .tex per framework
 ```
 
 `Process` is `WplusHH`, `WminusHH`, or `ZHH`. Energies use folder names `13_6TeV` and `14_0TeV`.
 
 Human-readable `*_analysis_A.txt` / `*_analysis_B.txt` files are reference only; the code reads JSON at runtime.
+
+### Contents of `results/`
+
+ Scan points, plots, and tables used for publication **in preparation** produced by the notebooks are part of the repository (empty channel/energy folders may still use `.gitkeep` until filled).
+
+| Subtree | Path | Contents |
+|---------|------|----------|
+| **`points/`** | `results/points/{heft\|smeft}/<Process>/<energy>/` | Scan `.txt` tables from §3–§4 |
+| **`plots/`** | `results/plots/{heft\|smeft}/<Process>/<energy>/` | Scan PNGs (e.g. `…_sigma_nnlo_and_K_nnlo.png`, `…_sigma_nnlo_and_EFT_enhancement.png`) |
+| **`tables/`** | `results/tables/{heft\|smeft}/` | One publication `.tex` per framework |
+
+**HEFT** (`results/tables/heft/heft_publication_tables.tex`): single file with all HEFT benchmark tables. Each table evaluates $\sigma$ at **both interval boundaries** (min and max) for every scan-axis $\kappa$, with other $\kappa$ fixed to SM ($=1$), at 13.6 and 14.0 TeV.
+
+**SMEFT** (`results/tables/smeft/smeft_publication_tables.tex`): single file with all SMEFT benchmark tables. For each WC, **only the interval endpoint that maximises** $\sigma_{\mathrm{NNLO}}$ is shown (other $C_i=0$), at 13.6 and 14.0 TeV.
+
+Re-running the notebooks overwrites the corresponding files under these paths.
 
 ---
 
