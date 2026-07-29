@@ -129,8 +129,6 @@ VHH-NNLO/
 ├── README.md
 ├── AGENTS.md
 ├── pyproject.toml              # pip install -e ".[notebook]"
-├── scripts/
-│   └── build_smeft_package_data.py   # regenerate data/SMEFT from SMEFT_Results
 ├── vhh_predict/                # importable package
 │   ├── analysis.py             # path helpers, load_analysis() [HEFT]
 │   ├── core.py                 # HEFT predict / scan / scan_grid
@@ -204,13 +202,13 @@ For full predictions with uncertainties, prefer `load_analysis()` / `load_smeft_
 
 ### Contents of `results/`
 
- Scan points, plots, and tables used for publication **in preparation** produced by the notebooks are part of the repository (empty channel/energy folders may still use `.gitkeep` until filled).
+`results/tables/` holds the full publication benchmark numbers (13.6 and 14.0 TeV). `results/points/` and `results/plots/` hold **example scans at 13.6 TeV only**, illustrating the notebook workflow — they are not an exhaustive reproduction of the paper. `14_0TeV` point/plot folders are intentionally empty (`.gitkeep`).
 
 | Subtree | Path | Contents |
 |---------|------|----------|
-| **`points/`** | `results/points/{heft\|smeft}/<Process>/<energy>/` | Scan `.txt` tables from §3–§4 |
-| **`plots/`** | `results/plots/{heft\|smeft}/<Process>/<energy>/` | Scan PNGs (e.g. `…_sigma_nnlo_and_K_nnlo.png`, `…_sigma_nnlo_and_EFT_enhancement.png`) |
-| **`tables/`** | `results/tables/{heft\|smeft}/` | One publication `.tex` per framework |
+| **`points/`** | `results/points/{heft\|smeft}/<Process>/13_6TeV/` | Example scan `.txt` tables from §3–§4, 13.6 TeV only |
+| **`plots/`** | `results/plots/{heft\|smeft}/<Process>/13_6TeV/` | Example scan PNGs, 13.6 TeV only (e.g. `…_sigma_nnlo_and_K_nnlo.png`, `…_sigma_nnlo_and_EFT_enhancement.png`) |
+| **`tables/`** | `results/tables/{heft\|smeft}/` | One publication `.tex` per framework, covering both 13.6 and 14.0 TeV |
 
 **HEFT** (`results/tables/heft/heft_publication_tables.tex`): single file with all HEFT benchmark tables. Each table evaluates $\sigma$ at **both interval boundaries** (min and max) for every scan-axis $\kappa$, with other $\kappa$ fixed to SM ($=1$), at 13.6 and 14.0 TeV.
 
@@ -223,3 +221,5 @@ Re-running the notebooks overwrites the corresponding files under these paths.
 ## Citation & license
 
 Publication **in preparation** — contact the authors for a preprint reference.
+
+This repository (code and bundled `data/`) is licensed under the [MIT License](LICENSE).

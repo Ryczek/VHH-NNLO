@@ -35,7 +35,6 @@ VHH-NNLO/
 ├── vhh_prediction_HEFT.ipynb   # HEFT entry point
 ├── vhh_prediction_SMEFT.ipynb  # SMEFT entry point
 ├── pyproject.toml
-├── scripts/build_smeft_package_data.py
 ├── vhh_predict/
 │   ├── analysis.py             # load_analysis(), path helpers
 │   ├── core.py                 # HEFT predict(), scan(), scan_grid()
@@ -60,9 +59,9 @@ VHH-NNLO/
 │       ├── {Process}_{energy}_analysis_B.txt
 │       └── Simulation/*.out
 └── results/                         # shipped notebook outputs
-    ├── points/{heft,smeft}/{Process}/{13_6TeV|14_0TeV}/
-    ├── plots/{heft,smeft}/{Process}/{13_6TeV|14_0TeV}/
-    └── tables/{heft,smeft}/         # heft_publication_tables.tex / smeft_publication_tables.tex
+    ├── points/{heft,smeft}/{Process}/13_6TeV/   # example scans, 13.6 TeV only; 14_0TeV/ kept empty (.gitkeep)
+    ├── plots/{heft,smeft}/{Process}/13_6TeV/    # example scans, 13.6 TeV only; 14_0TeV/ kept empty (.gitkeep)
+    └── tables/{heft,smeft}/         # heft_publication_tables.tex / smeft_publication_tables.tex — full results, both energies
 ```
 
 Path resolution:
@@ -184,7 +183,6 @@ Neither notebook depends on the other. Both import shared plot helpers from `vhh
 - Install: `pip install -e ".[notebook]"`.
 - Run notebooks from **repo root**; Setup cells verify expected `data/{HEFT|SMEFT}/` exists.
 - Restart the Jupyter kernel after changing `vhh_predict/` code.
-- Regenerate SMEFT bundle: `python scripts/build_smeft_package_data.py --repo-root <main-repo>`.
 - `*_analysis_A.txt` / `*_analysis_B.txt` are human reference only.
 - HEFT simulation: κ filenames. SMEFT simulation: `cH*` / `cth` / `chust` filenames.
 - Everything under `results/{points,plots,tables}/` is **meant to be committed**. Local junk (`.venv`, `__pycache__`, …) stays in `.gitignore`.
