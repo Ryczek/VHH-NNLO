@@ -1,5 +1,5 @@
 ============================================================
-Analysis timestamp: 2026-07-24T17:02:01
+Analysis timestamp: 2026-07-29T12:33:59
 Input directory: /Users/michalryczkowski/Documents/Projects/Current/Gioia/Code_16_07/pphhV_corrected/SMEFT_Results/ZHH/14_0TeV
 Process: ZHH
 Energy: 14.0 TeV
