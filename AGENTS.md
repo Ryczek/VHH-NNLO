@@ -192,5 +192,5 @@ Neither notebook depends on the other. Both import shared plot helpers from `vhh
 
 ## Packaging (`pyproject.toml`)
 
-- Package `vhh-predict`, Python ≥3.10 — sole install path.
-- `[tool.setuptools.data-files]` bundles `data/**/*` for non-editable installs.
+- Package `vhh-predict`, Python ≥3.10.
+- Editable install (`pip install -e ".[notebook]"`) is the **only** supported install path. `data/` is located relative to the repo root via `package_root()` (parent of `vhh_predict/`), which only resolves correctly for an editable checkout — a non-editable install or built wheel would not find the bundled data, so no `data-files`/`package_data` packaging is attempted.

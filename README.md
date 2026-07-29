@@ -43,6 +43,8 @@ jupyter notebook vhh_prediction_SMEFT.ipynb   # SMEFT (C_i)
 
 Run all cells top to bottom. Edit **§1** (process, flags), **§2** (EFT point), **§3** (scan + plots), **§4** (joint grid scan), **§5** (benchmark tables).
 
+The editable install (`-e`) is required: the package locates `data/` relative to the repo root, so a non-editable install or built wheel will not find the bundled coefficients.
+
 ---
 
 ## HEFT ($\kappa$ framework)

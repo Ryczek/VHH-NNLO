@@ -23,7 +23,3 @@ include = ["vhh_predict*"]
 
 [tool.setuptools.package-data]
 vhh_predict = []
-
-# Ship bundled coefficients with the repo layout (data/ sibling to package)
-[tool.setuptools.data-files]
-"share/vhh-predict" = ["data/**/*"]
