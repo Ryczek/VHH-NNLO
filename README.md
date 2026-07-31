@@ -9,7 +9,7 @@ Closed-form predictions for **vector-boson-associated double-Higgs production** 
 
 Coefficients and optional simulation reference points are bundled under `data/` — no Monte Carlo or fitting step required. If you only need the fitted **$A_k$** (HEFT) or **$B_i$** (SMEFT) arrays, load the JSON files described under [Contents of `data/`](#contents-of-data) — the Python package is optional.
 
-Accompanies an **in-preparation publication** (*Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory*).
+Accompanies the publication R. Gröber, M. Ryczkowski, G. Sacchi, *Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory*, [arXiv:2607.27334](https://arxiv.org/abs/2607.27334).
 
 ---
 
@@ -220,6 +220,23 @@ Re-running the notebooks overwrites the corresponding files under these paths.
 
 ## Citation & license
 
-Publication **in preparation** — contact the authors for a preprint reference.
+If you use this code or the bundled coefficients, please cite:
+
+> R. Gröber, M. Ryczkowski, G. Sacchi,
+> *Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory*,
+> [arXiv:2607.27334](https://arxiv.org/abs/2607.27334) (COMETA-2026-28).
+
+```bibtex
+@article{Grober:2026vhh,
+    author        = "Gr\"ober, Ramona and Ryczkowski, Micha{\l} and Sacchi, Gioia",
+    title         = "{Precise predictions for double Higgs production in association with a vector boson in Effective Field Theory}",
+    eprint        = "2607.27334",
+    archivePrefix = "arXiv",
+    primaryClass  = "hep-ph",
+    reportNumber  = "COMETA-2026-28",
+    doi           = "10.48550/arXiv.2607.27334",
+    year          = "2026"
+}
+```
 
 This repository (code and bundled `data/`) is licensed under the [MIT License](LICENSE).
